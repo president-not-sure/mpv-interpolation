@@ -11,6 +11,13 @@ A **VapourSynth** script for frame interpolation, allowing smooth motion and fra
   - It is AI assisted and heavily dependent on a powerful GPU but gives the best results.
 - [**mpv**](https://mpv.io/) is a free (as in freedom) media player for the command line. It supports a wide variety of media file formats, audio and video codecs, and subtitle types.
 
+## Requirements
+
+- Linux
+- Podman
+- mpv (Flatpak or baremetal)
+- internet connection
+
 ## Build MVTools and RIFE libraries and download RIFE models
 
 This will compile the required libraries and place them in `${HOME}/.local/lib/interpolation`. Once the compilation is complete, the image can be safely discarded as it is no longer needed.
