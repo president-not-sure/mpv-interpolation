@@ -259,7 +259,8 @@ def rife(
         **common_analyse_params
     )
 
-    # Rife only accepts RGB color space
+    # RIFE requires RGB input. The script automatically converts to RGB and
+    # back to the original format.
     original_format = clip.format.id
     clip = core.resize.Point(
         clip = clip,
