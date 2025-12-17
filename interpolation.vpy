@@ -18,7 +18,7 @@ core = vs.core
 
 # Load shared libraries
 home = os.path.expanduser("~")
-libdir = f"{home}/.local/lib64/vapoursynth"
+libdir = f"{home}/.local/lib/interpolation"
 core.std.LoadPlugin(path=f"{libdir}/librife.so")
 core.std.LoadPlugin(path=f"{libdir}/libmvtools.so")
 
