@@ -63,8 +63,8 @@ def extract_user_options(user_data: str) -> dict:
                     if value < 1.0:
                         raise ValueError(f"fps_factor must be greater than or equal to 1.0")
                 case "display_factor":
-                    if not 0.1 <= value <= 1.0:
-                        raise ValueError(f"display_factor must be between 0.1 and 1.0 inclusively")
+                    if not 0.01 <= value <= 1.0:
+                        raise ValueError(f"display_factor must be between 0.01 and 1.0 inclusively")
                 case _:
                     raise ValueError(f"'{key}' is not a valid option. Valid options are: 'library', 'fps_factor', 'display_factor'.")
             
@@ -98,7 +98,7 @@ def downscale(
     Parameters:
         clip (vs.VideoNode):Input video clip.
         display_res (tuple[int,int]): Target display resolution (width, height).
-        display_factor (float): Scaling factor between 0.1 and 1.0.
+        display_factor (float): Scaling factor between 0.01 and 1.0.
 
     Returns:
         vs.VideoNode: Downscaled clip.
@@ -109,8 +109,8 @@ def downscale(
     
     display_width, display_height = display_res
 
-    if not 0.1 <= display_factor <= 1.0:
-        raise ValueError("Factor must be between 0.1 and 1.0")
+    if not 0.01 <= display_factor <= 1.0:
+        raise ValueError("Factor must be between 0.01 and 1.0")
 
     # Calculate scaling factors to fit width and height within display
     # considering the display_factor
