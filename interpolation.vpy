@@ -3,11 +3,6 @@
 """
 VapourSynth script for frame interpolation using MVTools or RIFE for mpv.
 
-Help:
-- VapourSynth-RIFE-ncnn-Vulkan: https://github.com/styler00dollar/VapourSynth-RIFE-ncnn-Vulkan.git
-- VapourSynth MVTools: https://github.com/dubhater/vapoursynth-mvtools
-- MVTools2 documentation: https://avisynth.org.ru/mvtools/mvtools2.html
-
 Copyright (C) 2025 github.com/president-not-sure
 Licensed under GPLv2
 """
@@ -97,11 +92,8 @@ def downscale(
     display_factor: float = 1.0
 ) -> vs.VideoNode:
     """
-    Downscale a clip to fit within the display resolution, applying an optional
-    scaling factor. This step prevents unnecessary processing of pixels that 
-    fall outside the visible area when the factor is 1.0, and reduces the 
-    computational load for less powerful PCs when the factor is less than 1.0, 
-    making motion interpolation feasible.
+    Scales the video to fit within the display resolution, downscaling it
+    proportionally to the display size. It never upscales the video.
 
     Parameters:
         clip (vs.VideoNode):Input video clip.
