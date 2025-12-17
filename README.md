@@ -17,6 +17,7 @@ A **VapourSynth** script for frame interpolation, allowing smooth motion and fra
 - Podman
 - mpv (Flatpak or baremetal)
 - An internet connection
+- GPU drivers and multimedia codecs should preferably be installed
 
 ## Build MVTools and RIFE libraries and download RIFE models
 
