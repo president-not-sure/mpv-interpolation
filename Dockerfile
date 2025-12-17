@@ -36,3 +36,8 @@ RUN git clone https://github.com/styler00dollar/VapourSynth-RIFE-ncnn-Vulkan.git
     mv models build/ && \
     ninja -C build && \
     cp -afv build/librife.so build/models /output
+
+FROM scratch as output
+
+# Keep only the output
+COPY --from=build /output /
