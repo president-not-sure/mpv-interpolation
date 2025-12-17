@@ -282,7 +282,7 @@ def rife(
         factor_num = int(fps_factor * 1e6),
         factor_den = int(1e6),
         gpu_id = 0,
-        gpu_thread = 1,
+        gpu_thread = 2,
         tta = False,
         uhd = True,
         sc = True,
