@@ -43,7 +43,7 @@ cp -afv interpolation.vpy "$mpv_config_dir"
 
 ## Usage
 
-Options are passed to the VapourSynth script via mpv's shortcuts, which are set in `~/.config/mpv/input.conf` (or `~/.var/app/io.mpv.Mpv/config/mpv/input.conf` for Flatpak users) using the user-data key. The user-data string consists of key-value pairs, with each pair separated by `=` and individual pairs separated by `,`.
+Options are passed to the VapourSynth script via mpv's shortcuts, which are set using the user-data key. The user-data string consists of key-value pairs, with each pair separated by `=` and individual pairs separated by `,`.
 
 ### library
 
