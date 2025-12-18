@@ -3,6 +3,14 @@
 """
 VapourSynth script for frame interpolation using MVTools or RIFE for mpv.
 
+Variables provided by mpv:
+    video_in: The mpv video source as vapoursynth clip.
+    video_in_dw, video_in_dh: Display size of the video.
+    container_fps: FPS  value  as  reported by file headers.
+    display_fps: Refresh rate of the current display.
+    display_res: Resolution of the current display.
+    user_data: User data passed from the filter.
+
 Copyright (C) 2025 github.com/president-not-sure
 Licensed under GPLv2
 """
