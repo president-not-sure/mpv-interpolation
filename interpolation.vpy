@@ -40,7 +40,7 @@ def extract_user_options(user_data: str) -> dict:
     if user_data:
         # Split the string by commas
         variables = user_data.split(',')
-        
+
         for var in variables:
             # Split each part by '=' to get the key-value pair
             if '=' not in var:
@@ -71,7 +71,7 @@ def extract_user_options(user_data: str) -> dict:
 
             # Fill key-value pair
             user_options[key] = value
-    
+
     return user_options
 
 def make_even(number: float) -> int:
@@ -104,11 +104,11 @@ def downscale(
 
     Returns:
         vs.VideoNode: Downscaled clip.
-    
+
     Raises:
         ValueError: If display_factor is outside the valid range.
     """
-    
+
     display_width, display_height = display_res
 
     if not 0.01 <= display_factor <= 1.0:
@@ -206,7 +206,7 @@ def mvtools(
         thscd1 = 200,
         thscd2 = 64
     )
-    
+
     return clip
 
 def rife(
@@ -291,7 +291,7 @@ def rife(
         sc = True,
         list_gpu = False
     )
-    
+
     # Reset color space
     clip = core.resize.Point(
         clip = clip,
