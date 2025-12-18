@@ -17,15 +17,18 @@ libdir = f"{home}/.local/lib/interpolation"
 core.std.LoadPlugin(path=f"{libdir}/librife.so")
 core.std.LoadPlugin(path=f"{libdir}/libmvtools.so")
 
+
 def extract_user_options(user_data: str) -> dict:
     """
-    Parse user-provided options for library choice, FPS factor, and display factor.
+    Parse user-provided options for library choice, FPS factor, and display
+    factor.
 
     Parameters:
         user_data (str): String of comma-separated key=value pairs.
 
     Returns:
-        dict: Parsed options with keys 'library', 'fps_factor', 'display_factor'.
+        dict: Parsed options with keys 'library', 'fps_factor',
+              'display_factor'.
 
     Raises:
         ValueError: If an invalid key or value is provided.
@@ -44,7 +47,9 @@ def extract_user_options(user_data: str) -> dict:
         for var in variables:
             # Split each part by '=' to get the key-value pair
             if '=' not in var:
-                raise ValueError(f"Invalid format for '{var}', expected key=value format.")
+                raise ValueError(
+                    f"Invalid format for '{var}', expected key=value format."
+                )
 
             key, value = var.split('=')
 
@@ -53,26 +58,40 @@ def extract_user_options(user_data: str) -> dict:
                 try:
                     value = float(value)
                 except ValueError:
-                    raise ValueError(f"'{value}' is not a valid number for {key}")
+                    raise ValueError(
+                        f"'{value}' is not a valid number for {key}"
+                    )
 
             # Data validation
             match key:
                 case "library":
                     if value not in ["mvtools", "rife"]:
-                        raise ValueError(f"'{value}' is not a valid library. Valid options are 'mvtools' or 'rife'.")
+                        raise ValueError(
+                            f"'{value}' is not a valid library. Valid options "
+                            "are 'mvtools' or 'rife'."
+                        )
                 case "fps_factor":
                     if value < 1.0:
-                        raise ValueError(f"fps_factor must be greater than or equal to 1.0")
+                        raise ValueError(
+                            "fps_factor must be greater than or equal to 1.0"
+                        )
                 case "display_factor":
                     if not 0.01 <= value <= 1.0:
-                        raise ValueError(f"display_factor must be between 0.01 and 1.0 inclusively")
+                        raise ValueError(
+                            "display_factor must be between 0.01 and 1.0 "
+                            "inclusively"
+                        )
                 case _:
-                    raise ValueError(f"'{key}' is not a valid option. Valid options are: 'library', 'fps_factor', 'display_factor'.")
+                    raise ValueError(
+                        f"'{key}' is not a valid option. Valid options are: "
+                        "'library', 'fps_factor', 'display_factor'."
+                    )
 
             # Fill key-value pair
             user_options[key] = value
 
     return user_options
+
 
 def make_even(number: float) -> int:
     """
@@ -87,7 +106,6 @@ def make_even(number: float) -> int:
     return int(number) - int(number) % 2
 
 
-
 def downscale(
     clip: vs.VideoNode,
     display_res: tuple[int, int],
@@ -99,7 +117,8 @@ def downscale(
 
     Parameters:
         clip (vs.VideoNode):Input video clip.
-        display_res (tuple[int,int]): Target display resolution (width, height).
+        display_res (tuple[int,int]): Target display resolution
+                                      (width, height).
         display_factor (float): Scaling factor between 0.01 and 1.0.
 
     Returns:
@@ -131,12 +150,13 @@ def downscale(
     # Only resize if scaling is necessary
     if scale < 1:
         return core.resize.Lanczos(
-            clip = clip,
-            width = target_width,
-            height = target_height
+            clip=clip,
+            width=target_width,
+            height=target_height
         )
     else:
         return clip
+
 
 def mvtools(
     video_in: vs.VideoNode,
@@ -161,19 +181,19 @@ def mvtools(
     clip = video_in
 
     clip = downscale(
-        clip = clip,
-        display_res = display_res,
-        display_factor = display_factor
+        clip=clip,
+        display_res=display_res,
+        display_factor=display_factor
     )
 
-    super = core.mv.Super(clip = clip)
+    super = core.mv.Super(clip=clip)
 
     fps_num = int(container_fps * 1e6)
     fps_den = int(1e6)
     clip = core.std.AssumeFPS(
-        clip = clip,
-        fpsnum = fps_num,
-        fpsden = fps_den
+        clip=clip,
+        fpsnum=fps_num,
+        fpsden=fps_den
     )
 
     # Common parameters for motion vector analysis
@@ -185,29 +205,30 @@ def mvtools(
     }
     # Backward and forward motion vectors
     bwd_vec = core.mv.Analyse(
-        super = super,
-        isb = True,
+        super=super,
+        isb=True,
         **common_analyse_params
     )
     fwd_vec = core.mv.Analyse(
-        super = super,
-        isb = False,
+        super=super,
+        isb=False,
         **common_analyse_params
     )
 
     # Motion estimation and compensation.
     clip = core.mv.FlowFPS(
-        clip = clip,
-        super = super,
-        mvbw = bwd_vec,
-        mvfw = fwd_vec,
-        num = int(fps_num * fps_factor),
-        den = fps_den,
-        thscd1 = 200,
-        thscd2 = 64
+        clip=clip,
+        super=super,
+        mvbw=bwd_vec,
+        mvfw=fwd_vec,
+        num=int(fps_num * fps_factor),
+        den=fps_den,
+        thscd1=200,
+        thscd2=64
     )
 
     return clip
+
 
 def rife(
     video_in: vs.VideoNode,
@@ -232,19 +253,19 @@ def rife(
     clip = video_in
 
     clip = downscale(
-        clip = clip,
-        display_res = display_res,
-        display_factor = display_factor
+        clip=clip,
+        display_res=display_res,
+        display_factor=display_factor
     )
 
-    super = core.mv.Super(clip = clip)
+    super = core.mv.Super(clip=clip)
 
     fps_num = int(container_fps * 1e6)
     fps_den = int(1e6)
     clip = core.std.AssumeFPS(
-        clip = clip,
-        fpsnum = fps_num,
-        fpsden = fps_den
+        clip=clip,
+        fpsnum=fps_num,
+        fpsden=fps_den
     )
 
     # Common parameters for motion vector analysis
@@ -256,8 +277,8 @@ def rife(
     }
     # Backward and forward motion vectors
     bwd_vec = core.mv.Analyse(
-        super = super,
-        isb = True,
+        super=super,
+        isb=True,
         **common_analyse_params
     )
 
@@ -265,58 +286,59 @@ def rife(
     # back to the original format.
     original_format = clip.format.id
     clip = core.resize.Point(
-        clip = clip,
-        format = vs.RGBS,
-        matrix_in = vs.MATRIX_BT709
+        clip=clip,
+        format=vs.RGBS,
+        matrix_in=vs.MATRIX_BT709
     )
 
     # Only interpolate where needed
     clip = core.mv.SCDetection(
-        clip = clip,
-        vectors = bwd_vec,
-        thscd1 = 200,
-        thscd2 = 64
+        clip=clip,
+        vectors=bwd_vec,
+        thscd1=200,
+        thscd2=64
     )
 
     # AI assisted Real-Time Intermediate Flow Estimation
     clip = core.rife.RIFE(
-        clip = clip,
-        model = 41,
-        factor_num = int(fps_factor * 1e6),
-        factor_den = int(1e6),
-        gpu_id = 0,
-        gpu_thread = 2,
-        tta = False,
-        uhd = True,
-        sc = True,
-        list_gpu = False
+        clip=clip,
+        model=41,
+        factor_num=int(fps_factor * 1e6),
+        factor_den=int(1e6),
+        gpu_id=0,
+        gpu_thread=2,
+        tta=False,
+        uhd=True,
+        sc=True,
+        list_gpu=False
     )
 
     # Reset color space
     clip = core.resize.Point(
-        clip = clip,
-        format = original_format,
-        matrix = vs.MATRIX_BT709
-)
+        clip=clip,
+        format=original_format,
+        matrix=vs.MATRIX_BT709
+    )
     return clip
 
-user_options = extract_user_options(user_data = user_data)
+
+user_options = extract_user_options(user_data=user_data)  # noqa: F821
 match user_options['library']:
     case 'mvtools':
         clip = mvtools(
-            video_in = video_in,
-            display_res = display_res,
-            display_factor = user_options['display_factor'],
-            container_fps = container_fps,
-            fps_factor = user_options['fps_factor']
+            video_in=video_in,  # noqa: F821
+            display_res=display_res,  # noqa: F821
+            display_factor=user_options['display_factor'],
+            container_fps=container_fps,  # noqa: F821
+            fps_factor=user_options['fps_factor']
         )
     case 'rife':
         clip = rife(
-            video_in = video_in,
-            display_res = display_res,
-            display_factor = user_options['display_factor'],
-            container_fps = container_fps,
-            fps_factor = user_options['fps_factor']
+            video_in=video_in,  # noqa: F821
+            display_res=display_res,  # noqa: F821
+            display_factor=user_options['display_factor'],
+            container_fps=container_fps,  # noqa: F821
+            fps_factor=user_options['fps_factor']
         )
 
 # Output the processed clip
