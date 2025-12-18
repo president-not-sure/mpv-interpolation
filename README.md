@@ -76,8 +76,8 @@ Options are passed to the VapourSynth script via mpv shortcuts. These shortcuts 
 Add the following in your `~/.config/mpv/input.conf` or `/.var/app/io.mpv.Mpv/config/mpv/input.conf` for Flatpak users. `~~home/` is mpv's config directory. Options can be omitted to set defaults.
 
 ```conf
-ctrl+m vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools,display_factor=1.0,fps_factor=2"
-ctrl+M vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5,fps_factor=2"
+ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools,display_factor=1.0,fps_factor=2"
+ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5,fps_factor=2"
 ```
 
 Add the following in your `~/.config/mpv/mpv.conf` or `/.var/app/io.mpv.Mpv/config/mpv.conf` for Flatpak users to have basic interpolation without MVTools
