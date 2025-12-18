@@ -1,0 +1,47 @@
+---
+name: CI
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  CI:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    continue-on-error: false
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip
+          pip install --upgrade flake8
+
+      - name: Report versions
+        run: |
+          python --version
+          pip --version
+          flake8 --version
+
+      - name: Style guide enforcement
+        run: |
+          flake8 --verbose interpolation.vpy
+
+      # - name: Unit tests
+      #   run: |
+      #     python -m unittest --verbose
