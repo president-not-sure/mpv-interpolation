@@ -51,7 +51,7 @@ cp -afv interpolation.vpy "$mpv_config_dir"
 
 ## Usage
 
-Options are passed to the VapourSynth script via mpv shortcuts. These shortcuts use the user-data key, whose value is a string of key–value pairs. Each key–value pair is written as `key=value`, and multiple pairs are separated by `,`.
+Options are passed to the VapourSynth script via mpv's key bindings. These key bindings use the user-data key, whose value is a string of key–value pairs. Each key–value pair is written as `key=value`, and multiple pairs are separated by `,`.
 
 ### library
 
