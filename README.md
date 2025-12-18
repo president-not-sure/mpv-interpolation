@@ -51,7 +51,7 @@ cp -afv interpolation.vpy "$mpv_config_dir"
 
 ## Usage
 
-Options are passed to the VapourSynth script via mpv's key bindings. These key bindings use the user-data key, whose value is a string of key–value pairs. Each key–value pair is written as `key=value`, and multiple pairs are separated by `,`.
+Options are passed to the VapourSynth script via mpv's key bindings. These key bindings use the user-data key, whose value is a string of key–value pairs. Each key–value pair is written as `key=value`, and multiple pairs are separated by `,`. Omitted key-values pairs will be set to default values.
 
 ### library
 
@@ -73,7 +73,7 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 
 ### Examples
 
-Add the following in your `~/.config/mpv/input.conf` or `/.var/app/io.mpv.Mpv/config/mpv/input.conf` for Flatpak users. `~~home/` is mpv's config directory. Options can be omitted to set defaults.
+Add the following in your `~/.config/mpv/input.conf` or `/.var/app/io.mpv.Mpv/config/mpv/input.conf` for Flatpak users. `~~home/` is mpv's config directory.
 
 ```conf
 ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools,display_factor=1.0,fps_factor=2"
