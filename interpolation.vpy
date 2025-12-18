@@ -68,7 +68,8 @@ def extract_user_options(user_data: str) -> dict:
                         raise ValueError(f"display_factor must be between 0.01 and 1.0 inclusively")
                 case _:
                     raise ValueError(f"'{key}' is not a valid option. Valid options are: 'library', 'fps_factor', 'display_factor'.")
-            
+
+            # Fill key-value pair
             user_options[key] = value
     
     return user_options
