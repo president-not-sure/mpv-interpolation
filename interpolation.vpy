@@ -55,6 +55,7 @@ def extract_user_options(user_data: str) -> dict:
                 except ValueError:
                     raise ValueError(f"'{value}' is not a valid number for {key}")
 
+            # Data validation
             match key:
                 case "library":
                     if value not in ["mvtools", "rife"]:
