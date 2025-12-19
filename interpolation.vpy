@@ -309,7 +309,7 @@ def validate_boundaries(
 
 def validate_coord(value: list[int], label: str = "List") -> list[int]:
     """
-    Validate that the input is a list of 2 intergers.
+    Validate that the input is a list of 2 integers.
 
     Returns:
         [int, int]: The input value.
@@ -343,7 +343,7 @@ def downscale(clip: vs.VideoNode, mpvd: MPVData):
 
     # Choose the smaller scale to fit inside the display fill it
     scale = min(scale_width, scale_height)
-    # Prevent upsacaling
+    # Prevent upscaling
     scale = min(1, scale)
 
     # Scale dimensions and ensure compatibility
