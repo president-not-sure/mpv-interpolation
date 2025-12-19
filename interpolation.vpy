@@ -275,8 +275,13 @@ def validate_boundaries(
     incl_max: bool = True
 ) -> float:
     """
-    Validate that a numeric value falls within optional boundaries and
-    fail-fast if it does not.
+    Validate that a numeric value falls within optional boundaries.
+
+    Returns:
+        float: The input value cast into a float.
+
+    Raises:
+        ValueError: If the input is not a numeric type or within boundaries.
     """
     try:
         value = float(value)
