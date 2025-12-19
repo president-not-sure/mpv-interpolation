@@ -307,6 +307,24 @@ def validate_boundaries(
     return value
 
 
+def validate_coord(value: list[int], label: str = "List") -> list[int]:
+    """
+    Validate that the input is a list of 2 intergers.
+
+    Returns:
+        [int, int]: The input value.
+
+    Raises:
+        TypeError: If the input is not [int, int].
+    """
+    if not isinstance(value, list):
+        raise TypeError(f"{label} must be a list")
+    if len(value) != 2 or not all(isinstance(v, int) for v in value):
+        raise TypeError(f"{label} must be [int, int]")
+
+    return value
+
+
 def make_even(number: float) -> int:
     """Round a number down to the nearest even integer."""
     return int(number) - int(number) % 2
