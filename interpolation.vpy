@@ -3,148 +3,280 @@
 """
 VapourSynth script for frame interpolation using MVTools or RIFE for mpv.
 
-Variables provided by mpv:
-    video_in: The mpv video source as vapoursynth clip.
-    video_in_dw, video_in_dh: Display size of the video.
-    container_fps: FPS  value  as  reported by file headers.
-    display_fps: Refresh rate of the current display.
-    display_res: Resolution of the current display.
-    user_data: User data passed from the filter.
-
 Copyright (C) 2025 github.com/president-not-sure
 Licensed under GPLv2
 """
 
+import json
 import os
 import vapoursynth as vs
 core = vs.core
 
+FPS_PRECISION = 1e6
+
 # Load shared libraries
 home = os.path.expanduser("~")
 libdir = f"{home}/.local/lib/interpolation"
-core.std.LoadPlugin(path=f"{libdir}/librife.so")
-core.std.LoadPlugin(path=f"{libdir}/libmvtools.so")
+try:
+    core.std.LoadPlugin(path=f"{libdir}/librife.so")
+except (OSError, FileNotFoundError) as e:
+    raise FileNotFoundError(
+        f"'{libdir}/librife.so' missing. Did you forget to build the "
+        "libraries? README.md for more info."
+    ) from e
+try:
+    core.std.LoadPlugin(path=f"{libdir}/libmvtools.so")
+except (OSError, FileNotFoundError) as e:
+    raise FileNotFoundError(
+        f"'{libdir}/libmvtools.so' missing. Did you forget to build the "
+        "libraries? README.md for more info."
+    ) from e
 
 
-def extract_user_options(user_data: str) -> dict:
-    """
-    Parse user-provided options for library choice, FPS factor, and display
-    factor.
+class UserData:
+    """Holds validated user data."""
+    __slots__ = ['_library', '_fps_factor', '_display_factor']
 
-    Parameters:
-        user_data (str): String of comma-separated key=value pairs.
+    def __init__(self, user_data: str):
+        # Default values for the user data
+        self._set_display_factor("1.0")
+        self._set_fps_factor("2.0")
+        self._set_library("mvtools")
 
-    Returns:
-        dict: Parsed options with keys 'library', 'fps_factor',
-              'display_factor'.
+        self._set_user_options(user_data)
 
-    Raises:
-        ValueError: If an invalid key or value is provided.
-    """
-    # Set default user options
-    user_options = {
-        'library': 'mvtools',
-        'fps_factor': 2.0,
-        'display_factor': 1.0
-    }
-    # Extract if not empty
-    if user_data:
-        # Split the string by commas
-        variables = user_data.split(',')
+    @property
+    def library(self) -> str:
+        """Interpolation library"""
+        return self._library
 
-        for var in variables:
-            # Split each part by '=' to get the key-value pair
-            if '=' not in var:
-                raise ValueError(
-                    f"Invalid format for '{var}', expected key=value format."
-                )
+    def _set_library(self, value: str):
+        valid_libraries = ('mvtools', 'rife')
+        if value not in valid_libraries:
+            raise ValueError(
+                f"'{value}' is not a valid library. "
+                f"Valid options are: {valid_libraries}."
+            )
+        self._library = value
 
-            key, value = var.split('=')
+    @property
+    def fps_factor(self) -> float:
+        """Frame rate multiplier."""
+        return self._fps_factor
 
-            # Convert value to float for fps_factor and display_factor
-            if key in ["fps_factor", "display_factor"]:
-                try:
-                    value = float(value)
-                except ValueError:
+    def _set_fps_factor(self, value: str):
+        self._fps_factor = float(value)
+        if self._fps_factor < 1.0:
+            raise ValueError("fps_factor must be >= 1.0")
+
+    @property
+    def display_factor(self) -> float:
+        """
+        Scaling factor applied to the display size to limit the video
+        dimensions.
+        """
+        return self._display_factor
+
+    def _set_display_factor(self, value: str):
+        self._display_factor = float(value)
+        if not 0.05 <= self._display_factor <= 1.0:
+            raise ValueError(
+                "display_factor must be between 0.05 and 1.0 inclusively"
+            )
+
+    def _set_user_options(self, value: str):
+        """Parse and validate user_data"""
+        if not isinstance(value, str):
+            raise ValueError("user_data is not a string.")
+        if value:
+            pairs = value.split(",")
+            for p in pairs:
+                # Split each part by '=' to get the key-value pair
+                if "=" not in p:
                     raise ValueError(
-                        f"'{value}' is not a valid number for {key}"
+                        f"Invalid format for '{p}', expected key=value format."
                     )
+                k, v = p.split("=", 1)
+                k = f"_{k}"
 
-            # Data validation
-            match key:
-                case "library":
-                    if value not in ["mvtools", "rife"]:
-                        raise ValueError(
-                            f"'{value}' is not a valid library. Valid options "
-                            "are 'mvtools' or 'rife'."
-                        )
-                case "fps_factor":
-                    if value < 1.0:
-                        raise ValueError(
-                            "fps_factor must be greater than or equal to 1.0"
-                        )
-                case "display_factor":
-                    if not 0.01 <= value <= 1.0:
-                        raise ValueError(
-                            "display_factor must be between 0.01 and 1.0 "
-                            "inclusively"
-                        )
-                case _:
+                valid_options = self.__slots__
+                if k not in valid_options:
                     raise ValueError(
-                        f"'{key}' is not a valid option. Valid options are: "
-                        "'library', 'fps_factor', 'display_factor'."
+                        f"'{k.lstrip('_')}' is not a valid option."
                     )
+                else:
+                    # Dynamically calls a set method by name with parameter
+                    method = getattr(self, f"_set{k}")
+                    method(v)
 
-            # Fill key-value pair
-            user_options[key] = value
+    def to_dict(self) -> dict:
+        """Return a dictionary of all public properties."""
+        d = {}
+        for name in self.__slots__:
+            name = name.lstrip('_')
+            prop = getattr(self, name)
+            if isinstance(prop, vs.VideoNode):
+                d[name] = str(prop)
+            else:
+                d[name] = prop
+        return d
 
-    return user_options
+    def __str__(self) -> str:
+        """Return a string version of the object in JSON format."""
+        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
+
+
+class MPVData:
+    """Holds mpv-provided video information and validated user options."""
+    __slots__ = [
+        '_container_fps',
+        '_display_fps',
+        '_display_res',
+        '_user_data',
+        '_video_in',
+        '_video_in_dh',
+        '_video_in_dw'
+    ]
+
+    def __init__(
+        self,
+        container_fps: float,
+        display_fps: float,
+        display_res: list[int],
+        user_data: str,
+        video_in_dh: int,
+        video_in_dw: int,
+        video_in: vs.VideoNode
+    ):
+        """Initialize MPVData instance"""
+        # mpv provided
+        self._set_container_fps(container_fps)
+        self._set_display_fps(display_fps)
+        self._set_display_res(display_res)
+        self._set_user_data(user_data)
+        self._set_video_in(video_in)
+        self._set_video_in_dh(video_in_dh)
+        self._set_video_in_dw(video_in_dw)
+
+    @property
+    def container_fps(self) -> float:
+        """FPS value as reported by file headers."""
+        return self._container_fps
+
+    def _set_container_fps(self, value: float):
+        self._container_fps = float(value)
+        if self._container_fps <= 0:
+            raise ValueError(
+                "container_fps must be > 0"
+            )
+
+    @property
+    def display_fps(self) -> float:
+        """Refresh rate of the current display"""
+        return self._display_fps
+
+    def _set_display_fps(self, value: float):
+        self._display_fps = float(value)
+        if self._display_fps <= 0:
+            raise ValueError(
+                "display_fps must be > 0"
+            )
+
+    @property
+    def display_res(self) -> list[int]:
+        """Resolution of the current display."""
+        return self._display_res
+
+    def _set_display_res(self, value: list[int]):
+        if not (
+            isinstance(value, list)
+            and len(value) == 2
+            and all(isinstance(v, int) for v in value)
+        ):
+            raise TypeError("display_res must be [int, int]")
+        self._display_res = value
+
+    @property
+    def user_data(self) -> UserData:
+        """User data passed from the filter."""
+        return self._user_data
+
+    def _set_user_data(self, value: str):
+        if not isinstance(value, str):
+            raise TypeError("user_data is not a string.")
+        self._user_data = UserData(value)
+
+    @property
+    def video_in(self) -> vs.VideoNode:
+        """The mpv video source as vapoursynth clip."""
+        return self._video_in
+
+    def _set_video_in(self, value: vs.VideoNode):
+        if isinstance(value, vs.VideoNode):
+            self._video_in = value
+        else:
+            raise TypeError(f"{type(value)} is not of type vs.VideoNode.")
+
+    @property
+    def video_in_dh(self) -> int:
+        """Display height of the video."""
+        return self._video_in_dh
+
+    def _set_video_in_dh(self, value: int):
+        self._video_in_dh = int(value)
+        if self._video_in_dh < 2:
+            raise ValueError(
+                "video_in_dh must be >= 2"
+            )
+
+    @property
+    def video_in_dw(self) -> int:
+        """Display width of the video."""
+        return self._video_in_dw
+
+    def _set_video_in_dw(self, value: int):
+        self._video_in_dw = int(value)
+        if self._video_in_dw < 2:
+            raise ValueError(
+                "video_in_dw must be >= 2"
+            )
+
+    def to_dict(self) -> dict:
+        """Return a dictionary of all public properties."""
+        d = {}
+        for name in self.__slots__:
+            name = name.lstrip('_')
+            prop = getattr(self, name)
+            if not prop:
+                d[name] = ""
+            elif isinstance(prop, UserData):
+                d[name] = prop.to_dict()
+            elif isinstance(prop, vs.VideoNode):
+                d[name] = str(prop)
+            else:
+                d[name] = prop
+        return d
+
+    def __str__(self) -> str:
+        """Return a string version of the object in JSON format."""
+        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
 def make_even(number: float) -> int:
-    """
-    Round a number down to the nearest even integer.
-
-    Parameters:
-        number (float): The input number.
-
-    Returns:
-        int: The largest even integer less than or equal to the input.
-    """
+    """Round a number down to the nearest even integer."""
     return int(number) - int(number) % 2
 
 
-def downscale(
-    clip: vs.VideoNode,
-    display_res: tuple[int, int],
-    display_factor: float = 1.0
-) -> vs.VideoNode:
+def downscale(clip: vs.VideoNode, mpvd: MPVData):
     """
-    Scales the video to fit within the display resolution, downscaling it
-    proportionally to the display size. It never upscales the video.
-
-    Parameters:
-        clip (vs.VideoNode):Input video clip.
-        display_res (tuple[int,int]): Target display resolution
-                                      (width, height).
-        display_factor (float): Scaling factor between 0.01 and 1.0.
-
-    Returns:
-        vs.VideoNode: Downscaled clip.
-
-    Raises:
-        ValueError: If display_factor is outside the valid range.
+    Scale the video to fit within the display's resolution multiplied by
+    user-provided display_factor. It never upscales the video.
     """
-
-    display_width, display_height = display_res
-
-    if not 0.01 <= display_factor <= 1.0:
-        raise ValueError("Factor must be between 0.01 and 1.0")
+    display_width, display_height = mpvd.display_res
 
     # Calculate scaling factors to fit width and height within display
-    # considering the display_factor
-    scale_width = display_width * display_factor / clip.width
-    scale_height = display_height * display_factor / clip.height
+    scale_width = display_width * mpvd.user_data.display_factor / clip.width
+    scale_height = display_height * mpvd.user_data.display_factor / clip.height
 
     # Choose the smaller scale to fit inside the display fill it
     scale = min(scale_width, scale_height)
@@ -166,44 +298,28 @@ def downscale(
         return clip
 
 
-def mvtools(
-    video_in: vs.VideoNode,
-    display_res: tuple[int, int],
-    display_factor: float,
-    container_fps: float,
-    fps_factor: float
-) -> vs.VideoNode:
-    """
-    Apply MVTools frame interpolation to a video clip.
+def prepare_clip(mpvd: MPVData):
+    """Downscale clip and set its frame rate."""
+    clip = mpvd.video_in
 
-    Parameters:
-        video_in (vs.VideoNode): Input video clip.
-        display_res (tuple[int,int]): Target display resolution.
-        display_factor (float): Scaling factor for downscaling.
-        container_fps (float): Original FPS of the video.
-        fps_factor (float): Factor to multiply FPS for interpolation.
+    clip = downscale(clip=clip, mpvd=mpvd)
 
-    Returns:
-        vs.VideoNode: Interpolated clip.
-    """
-    clip = video_in
-
-    clip = downscale(
-        clip=clip,
-        display_res=display_res,
-        display_factor=display_factor
-    )
-
-    super = core.mv.Super(clip=clip)
-
-    fps_num = int(container_fps * 1e6)
-    fps_den = int(1e6)
+    fps_num = int(mpvd.container_fps * FPS_PRECISION)
+    fps_den = int(FPS_PRECISION)
     clip = core.std.AssumeFPS(
         clip=clip,
         fpsnum=fps_num,
         fpsden=fps_den
     )
 
+    return clip
+
+
+def mvtools(mpvd: MPVData) -> vs.VideoNode:
+    """Apply MVTools frame interpolation to a video clip."""
+    clip = prepare_clip(mpvd)
+
+    super = core.mv.Super(clip=clip)
     # Common parameters for motion vector analysis
     blksize = 32
     common_analyse_params = {
@@ -229,8 +345,8 @@ def mvtools(
         super=super,
         mvbw=bwd_vec,
         mvfw=fwd_vec,
-        num=int(fps_num * fps_factor),
-        den=fps_den,
+        num=int(clip.fps.numerator * mpvd.user_data.fps_factor),
+        den=int(clip.fps.denominator),
         thscd1=200,
         thscd2=64
     )
@@ -238,44 +354,11 @@ def mvtools(
     return clip
 
 
-def rife(
-    video_in: vs.VideoNode,
-    display_res: tuple[int, int],
-    display_factor: float,
-    container_fps: float,
-    fps_factor: float
-) -> vs.VideoNode:
-    """
-    Apply RIFE frame interpolation to a video clip.
-
-    Parameters:
-        video_in (vs.VideoNode): Input video clip.
-        display_res (tuple[int,int]): Target display resolution.
-        display_factor (float): Scaling factor for downscaling.
-        container_fps (float): Original FPS of the video.
-        fps_factor (float): Factor to multiply FPS for interpolation.
-
-    Returns:
-        vs.VideoNode: Interpolated clip.
-    """
-    clip = video_in
-
-    clip = downscale(
-        clip=clip,
-        display_res=display_res,
-        display_factor=display_factor
-    )
+def rife(mpvd: MPVData) -> vs.VideoNode:
+    """Apply RIFE frame interpolation to a video clip."""
+    clip = prepare_clip(mpvd)
 
     super = core.mv.Super(clip=clip)
-
-    fps_num = int(container_fps * 1e6)
-    fps_den = int(1e6)
-    clip = core.std.AssumeFPS(
-        clip=clip,
-        fpsnum=fps_num,
-        fpsden=fps_den
-    )
-
     # Common parameters for motion vector analysis
     blksize = 32
     common_analyse_params = {
@@ -283,15 +366,14 @@ def rife(
         'overlap': int(blksize / 8),
         'truemotion': True
     }
-    # Backward and forward motion vectors
+    # Backward motion vectors
     bwd_vec = core.mv.Analyse(
         super=super,
         isb=True,
         **common_analyse_params
     )
 
-    # RIFE requires RGB input. The script automatically converts to RGB and
-    # back to the original format.
+    # RIFE requires RGB 32bit input. Convert and restore after interpolation.
     original_format = clip.format.id
     clip = core.resize.Point(
         clip=clip,
@@ -311,8 +393,8 @@ def rife(
     clip = core.rife.RIFE(
         clip=clip,
         model=41,
-        factor_num=int(fps_factor * 1e6),
-        factor_den=int(1e6),
+        factor_num=int(mpvd.user_data.fps_factor * FPS_PRECISION),
+        factor_den=int(FPS_PRECISION),
         gpu_id=0,
         gpu_thread=2,
         tta=False,
@@ -330,24 +412,24 @@ def rife(
     return clip
 
 
-user_options = extract_user_options(user_data=user_data)  # noqa: F821
-match user_options['library']:
-    case 'mvtools':
-        clip = mvtools(
-            video_in=video_in,  # noqa: F821
-            display_res=display_res,  # noqa: F821
-            display_factor=user_options['display_factor'],
-            container_fps=container_fps,  # noqa: F821
-            fps_factor=user_options['fps_factor']
-        )
-    case 'rife':
-        clip = rife(
-            video_in=video_in,  # noqa: F821
-            display_res=display_res,  # noqa: F821
-            display_factor=user_options['display_factor'],
-            container_fps=container_fps,  # noqa: F821
-            fps_factor=user_options['fps_factor']
-        )
+# Initialize the MPVData instance
+mpvd = MPVData(
+    container_fps=container_fps,  # noqa: F821
+    display_fps=display_fps,  # noqa: F821
+    display_res=display_res,  # noqa: F821
+    user_data=user_data,  # noqa: F821
+    video_in_dh=video_in_dh,  # noqa: F821
+    video_in_dw=video_in_dw,  # noqa: F821
+    video_in=video_in  # noqa: F821
+)
+# Output mpvd for debugging
+print(f"\ninterpolation.vpy:\n{mpvd}")
+
+# Start interpolation
+if mpvd.user_data.library == "mvtools":
+    clip = mvtools(mpvd)
+elif mpvd.user_data.library == "rife":
+    clip = rife(mpvd)
 
 # Output the processed clip
 clip.set_output()
