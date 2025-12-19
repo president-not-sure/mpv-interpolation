@@ -57,22 +57,25 @@ class UserData:
         """
         return self._display_factor
 
-    def _set_display_factor(self, value: str):
-        self._display_factor = float(value)
-        if not 0.05 <= self._display_factor <= 1.0:
-            raise ValueError(
-                "display_factor must be between 0.05 and 1.0 inclly"
-            )
+    def _set_display_factor(self, value: int | float | str):
+        self._display_factor = validate_boundaries(
+            value=value,
+            label="display_factor",
+            min=0.05,
+            max=1.0
+        )
 
     @property
     def fps_factor(self) -> float:
         """Frame rate multiplier."""
         return self._fps_factor
 
-    def _set_fps_factor(self, value: str):
-        self._fps_factor = float(value)
-        if self._fps_factor < 1.0:
-            raise ValueError("fps_factor must be >= 1.0")
+    def _set_fps_factor(self, value: int | float | str):
+        self._fps_factor = validate_boundaries(
+            value=value,
+            label="fps_factor",
+            min=1.0
+        )
 
     @property
     def library(self) -> str:
@@ -167,24 +170,26 @@ class MPVData:
         """FPS value as reported by file headers."""
         return self._container_fps
 
-    def _set_container_fps(self, value: float):
-        self._container_fps = float(value)
-        if self._container_fps <= 0:
-            raise ValueError(
-                "container_fps must be > 0"
-            )
+    def _set_container_fps(self, value: int | float | str):
+        self._container_fps = validate_boundaries(
+            value=value,
+            label="container_fps",
+            min=0,
+            incl_min=False
+        )
 
     @property
     def display_fps(self) -> float:
         """Refresh rate of the current display"""
         return self._display_fps
 
-    def _set_display_fps(self, value: float):
-        self._display_fps = float(value)
-        if self._display_fps <= 0:
-            raise ValueError(
-                "display_fps must be > 0"
-            )
+    def _set_display_fps(self, value: int | float | str):
+        self._display_fps = validate_boundaries(
+            value=value,
+            label="display_fps",
+            min=0,
+            incl_min=False
+        )
 
     @property
     def display_res(self) -> list[int]:
@@ -192,13 +197,7 @@ class MPVData:
         return self._display_res
 
     def _set_display_res(self, value: list[int]):
-        if not (
-            isinstance(value, list)
-            and len(value) == 2
-            and all(isinstance(v, int) for v in value)
-        ):
-            raise TypeError("display_res must be [int, int]")
-        self._display_res = value
+        self._display_res = validate_coord(value=value, label="display_res")
 
     @property
     def user_data(self) -> UserData:
@@ -226,24 +225,18 @@ class MPVData:
         """Display height of the video."""
         return self._video_in_dh
 
-    def _set_video_in_dh(self, value: int):
+    def _set_video_in_dh(self, value: int | float | str):
+        validate_boundaries(value=value, label="video_in_dh", min=2)
         self._video_in_dh = int(value)
-        if self._video_in_dh < 2:
-            raise ValueError(
-                "video_in_dh must be >= 2"
-            )
 
     @property
     def video_in_dw(self) -> int:
         """Display width of the video."""
         return self._video_in_dw
 
-    def _set_video_in_dw(self, value: int):
+    def _set_video_in_dw(self, value: int | float | str):
+        validate_boundaries(value=value, label="video_in_dh", min=2)
         self._video_in_dw = int(value)
-        if self._video_in_dw < 2:
-            raise ValueError(
-                "video_in_dw must be >= 2"
-            )
 
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
