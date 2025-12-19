@@ -267,17 +267,21 @@ class MPVData:
 
 
 def validate_boundaries(
-    value: int | float,
+    value: int | float | str,
     label: str = "Value",
     min: int | float | None = None,
     incl_min: bool = True,
     max: int | float | None = None,
     incl_max: bool = True
-) -> int | float:
-    """Validate that a numeric value falls within optional boundaries."""
-
-    if not isinstance(value, (int, float)):
-        raise ValueError(f"{label} must be an int or a float")
+) -> float:
+    """
+    Validate that a numeric value falls within optional boundaries and
+    fail-fast if it does not.
+    """
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{label} must be a numeric type")
 
     if min is not None:
         if incl_min:
