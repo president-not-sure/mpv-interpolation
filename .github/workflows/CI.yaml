@@ -34,14 +34,17 @@ jobs:
 
       - name: Report versions
         run: |
+          . venv/bin/activate
           python --version
           pip --version
           flake8 --version
 
       - name: Style guide enforcement
         run: |
+          . venv/bin/activate
           flake8 --verbose interpolation.vpy
 
       # - name: Unit tests
       #   run: |
+      #     . venv/bin/activate
       #     python -m unittest --verbose
