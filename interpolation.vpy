@@ -61,7 +61,7 @@ class UserData:
         self._display_factor = float(value)
         if not 0.05 <= self._display_factor <= 1.0:
             raise ValueError(
-                "display_factor must be between 0.05 and 1.0 inclusively"
+                "display_factor must be between 0.05 and 1.0 inclly"
             )
 
     @property
@@ -264,6 +264,38 @@ class MPVData:
     def __str__(self) -> str:
         """Return a string version of the object in JSON format."""
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
+
+
+def validate_boundaries(
+    value: int | float,
+    label: str = "Value",
+    min: int | float | None = None,
+    incl_min: bool = True,
+    max: int | float | None = None,
+    incl_max: bool = True
+) -> int | float:
+    """Validate that a numeric value falls within optional boundaries."""
+
+    if not isinstance(value, (int, float)):
+        raise ValueError(f"{label} must be an int or a float")
+
+    if min is not None:
+        if incl_min:
+            if value < min:
+                raise ValueError(f"{label} must be >= {min}")
+        else:
+            if value <= min:
+                raise ValueError(f"{label} must be > {min}")
+
+    if max is not None:
+        if incl_max:
+            if value > max:
+                raise ValueError(f"{label} must be <= {max}")
+        else:
+            if value >= max:
+                raise ValueError(f"{label} must be < {max}")
+
+    return value
 
 
 def make_even(number: float) -> int:
