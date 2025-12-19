@@ -35,7 +35,11 @@ except (OSError, FileNotFoundError) as e:
 
 class UserData:
     """Holds validated user data."""
-    __slots__ = ['_library', '_fps_factor', '_display_factor']
+    __slots__ = [
+        '_display_factor',
+        '_fps_factor',
+        '_library'
+    ]
 
     def __init__(self, user_data: str):
         # Default values for the user data
@@ -44,30 +48,6 @@ class UserData:
         self._set_library("mvtools")
 
         self._set_user_options(user_data)
-
-    @property
-    def library(self) -> str:
-        """Interpolation library"""
-        return self._library
-
-    def _set_library(self, value: str):
-        valid_libraries = ('mvtools', 'rife')
-        if value not in valid_libraries:
-            raise ValueError(
-                f"'{value}' is not a valid library. "
-                f"Valid options are: {valid_libraries}."
-            )
-        self._library = value
-
-    @property
-    def fps_factor(self) -> float:
-        """Frame rate multiplier."""
-        return self._fps_factor
-
-    def _set_fps_factor(self, value: str):
-        self._fps_factor = float(value)
-        if self._fps_factor < 1.0:
-            raise ValueError("fps_factor must be >= 1.0")
 
     @property
     def display_factor(self) -> float:
@@ -83,6 +63,46 @@ class UserData:
             raise ValueError(
                 "display_factor must be between 0.05 and 1.0 inclusively"
             )
+
+    @property
+    def fps_factor(self) -> float:
+        """Frame rate multiplier."""
+        return self._fps_factor
+
+    def _set_fps_factor(self, value: str):
+        self._fps_factor = float(value)
+        if self._fps_factor < 1.0:
+            raise ValueError("fps_factor must be >= 1.0")
+
+    @property
+    def library(self) -> str:
+        """Interpolation library"""
+        return self._library
+
+    def _set_library(self, value: str):
+        valid_libraries = ('mvtools', 'rife')
+        if value not in valid_libraries:
+            raise ValueError(
+                f"'{value}' is not a valid library. "
+                f"Valid options are: {valid_libraries}."
+            )
+        self._library = value
+
+    def to_dict(self) -> dict:
+        """Return a dictionary of all public properties."""
+        d = {}
+        for name in self.__slots__:
+            name = name.lstrip('_')
+            prop = getattr(self, name)
+            if isinstance(prop, vs.VideoNode):
+                d[name] = str(prop)
+            else:
+                d[name] = prop
+        return d
+
+    def __str__(self) -> str:
+        """Return a string version of the object in JSON format."""
+        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
     def _set_user_options(self, value: str):
         """Parse and validate user_data"""
@@ -108,22 +128,6 @@ class UserData:
                     # Dynamically calls a set method by name with parameter
                     method = getattr(self, f"_set{k}")
                     method(v)
-
-    def to_dict(self) -> dict:
-        """Return a dictionary of all public properties."""
-        d = {}
-        for name in self.__slots__:
-            name = name.lstrip('_')
-            prop = getattr(self, name)
-            if isinstance(prop, vs.VideoNode):
-                d[name] = str(prop)
-            else:
-                d[name] = prop
-        return d
-
-    def __str__(self) -> str:
-        """Return a string version of the object in JSON format."""
-        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
 class MPVData:
