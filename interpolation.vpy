@@ -7,6 +7,7 @@ Copyright (C) 2025 github.com/president-not-sure
 Licensed under GPLv2
 """
 
+from __future__ import annotations
 import json
 import os
 from typing import Any
