@@ -51,40 +51,51 @@ cp -afv interpolation.vpy "$mpv_config_dir"
 
 ## Usage
 
-Options are passed to the VapourSynth script via mpv's key bindings. These key bindings use the user-data key, whose value is a string of key–value pairs. Each key–value pair is written as `key=value`, and multiple pairs are separated by `,`. Omitted key-values pairs will be set to default values.
-
-### library
-
-- description: Sets the interpolation library.
-- valid values: mvtools, rife
-- default: mvtools
-
-### fps_factor
-
-- description: Sets the factor by which the video frame rate will be multiplied.
-- valid values: >= 1.0
-- default: 2.0
+Options are passed to the VapourSynth script via mpv's key bindings. These key bindings use the user-data key, whose value is a string of key–value pairs. Each key–value pair is written as `key=value`, and multiple pairs are separated by `,`. Option order does not matter. Omitted key-values pairs will be set to default values. Specifying the path of the script is the minimal configuration.
 
 ### display_factor
 
-- description: Sets the scale of the video to fit within the display resolution, downscaling it proportionally to the display size. It never upscales the video.
-- valid values: 0.01 to 1.0
+- description: Scaling factor applied to the display size to limit the video dimensions. It never upscales the video.
+- constraint: 0.05 to 1.0
 - default: 1.0
+- type: float
+
+### fps_factor
+
+- description: Frame rate multiplier.
+- constraint: >= 1.0
+- default: 2.0
+- type: float
+
+### library
+
+- description: Interpolation library.
+- constraint: mvtools, rife
+- default: mvtools
+- type: str
 
 ### rife_gpu_id
 
-- description: Sets the GPU used by RIFE.
-- valid values: >= 0
+- description: ID of the GPU used by RIFE.
+- constraint: >= 0
 - default: 0
+- type: int
 
 ### Examples
 
 Add the following in your `~/.config/mpv/input.conf` or `/.var/app/io.mpv.Mpv/config/mpv/input.conf` for Flatpak users. `~~home/` is mpv's config directory.
 
 ```conf
-ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools,display_factor=1.0,fps_factor=2"
+ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools"
 ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5,fps_factor=2,rife_gpu_id=0"
 ```
+
+Or even:
+
+```conf
+ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy
+```
+
 
 Add the following in your `~/.config/mpv/mpv.conf` or `/.var/app/io.mpv.Mpv/config/mpv.conf` for Flatpak users to have basic interpolation without MVTools
 or RIFE.

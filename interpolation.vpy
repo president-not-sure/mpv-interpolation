@@ -82,7 +82,7 @@ class UserData:
 
     @property
     def library(self) -> str:
-        """Interpolation library"""
+        """Interpolation library."""
         return self._library
 
     def _set_library(self, value: str):
@@ -96,7 +96,7 @@ class UserData:
 
     @property
     def rife_gpu_id(self) -> int:
-        """RIFE GPU ID"""
+        """ID of the GPU used by RIFE."""
         return self._rife_gpu_id
 
     def _set_rife_gpu_id(self, value: int | str):
