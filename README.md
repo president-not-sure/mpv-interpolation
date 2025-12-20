@@ -60,13 +60,6 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 - default: 1.0
 - type: float
 
-### fps_factor
-
-- description: Frame rate multiplier.
-- constraint: >= 1.0
-- default: 2.0
-- type: float
-
 ### library
 
 - description: Interpolation library.
@@ -77,24 +70,31 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 ### rife_gpu_id
 
 - description: ID of the GPU used by RIFE.
-- constraint: >= 0
+- constraint: Greater or equal to 0.
 - default: 0
 - type: int
 
 ### rife_model
 
 - description: RIFE's model index in the models directory.
-- constraint: >= 0 to total number of available models minus 1
+- constraint: Between 0 and the total number of available models minus 1.
 - default: 41
 - type: int
+
+### target_fps
+
+- description: Target frame rate.
+- constraint: Clamped between the videos FPS and the display FPS.
+- default: display FPS
+- type: float
 
 ### Examples
 
 Add the following in your `~/.config/mpv/input.conf` or `/.var/app/io.mpv.Mpv/config/mpv/input.conf` for Flatpak users. `~~home/` is mpv's config directory.
 
 ```conf
-ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools"
-ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5"
+ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools,target_fps=48.0"
+ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5,target_fps=48.0"
 ```
 
 Or even:

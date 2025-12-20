@@ -26,19 +26,28 @@ class UserData:
     """Holds validated user data."""
     __slots__ = [
         '_display_factor',
-        '_fps_factor',
         '_library',
         '_rife_gpu_id',
-        '_rife_model'
+        '_rife_model',
+        '_target_fps'
     ]
 
-    def __init__(self, user_data: str):
+    def __init__(
+        self,
+        user_data: str,
+        container_fps: float,
+        display_fps: float
+    ):
         # Default values for the user data
         self._set_display_factor("1.0")
-        self._set_fps_factor("2.0")
         self._set_library("mvtools")
         self._set_rife_gpu_id(0)
         self._set_rife_model(41)
+        self._set_target_fps(
+            value=display_fps,
+            container_fps=container_fps,
+            display_fps=display_fps
+        )
 
         self._set_user_options(user_data)
 
@@ -55,18 +64,6 @@ class UserData:
             label="display_factor",
             min=0.05,
             max=1.0
-        )
-
-    @property
-    def fps_factor(self) -> float:
-        """Frame rate multiplier."""
-        return self._fps_factor
-
-    def _set_fps_factor(self, value: int | float | str):
-        self._fps_factor = validate_boundaries(
-            value=value,
-            label="fps_factor",
-            min=1.0
         )
 
     @property
@@ -129,6 +126,40 @@ class UserData:
             max=last_model_index
         )
         self._rife_model = int(value)
+
+    @property
+    def target_fps(self) -> float:
+        """Frame rate target."""
+        return self._target_fps
+
+    def _set_target_fps(
+        self,
+        value: int | float | str,
+        container_fps: float,
+        display_fps: float
+    ):
+        validate_type(
+            value=value,
+            expected_types=(int, float, str),
+            label="target_fps"
+        )
+        value = float(value)
+
+        # Clamp target_fps
+        if value < container_fps:
+            self._target_fps = container_fps
+            print(
+                f"\nWarning: target_fps was lesser than the videos's fps "
+                f"({container_fps}). Clamping target_fps to {container_fps}."
+            )
+        elif value > display_fps:
+            print(
+                f"\nWarning: target_fps was greater than the display's fps "
+                f"({display_fps}). Clamping target_fps to {display_fps}."
+            )
+            self._target_fps = display_fps
+        else:
+            self._target_fps = value
 
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
@@ -199,10 +230,16 @@ class MPVData:
         self._set_container_fps(container_fps)
         self._set_display_fps(display_fps)
         self._set_display_res(display_res)
-        self._set_user_data(user_data)
         self._set_video_in(video_in)
         self._set_video_in_dh(video_in_dh)
         self._set_video_in_dw(video_in_dw)
+
+        # Invoke last because it needs display_fps and display_fps initialized
+        self._set_user_data(
+            user_data=user_data,
+            container_fps=self.container_fps,
+            display_fps=self.display_fps
+        )
 
     @property
     def container_fps(self) -> float:
@@ -239,15 +276,6 @@ class MPVData:
         self._display_res = validate_coord(value=value, label="display_res")
 
     @property
-    def user_data(self) -> UserData:
-        """User data passed from the filter."""
-        return self._user_data
-
-    def _set_user_data(self, value: str):
-        validate_type(value=value, expected_types=str, label="user_data")
-        self._user_data = UserData(value)
-
-    @property
     def video_in(self) -> vs.VideoNode:
         """The mpv video source as vapoursynth clip."""
         return self._video_in
@@ -277,6 +305,27 @@ class MPVData:
     def _set_video_in_dw(self, value: int | float | str):
         validate_boundaries(value=value, label="video_in_dw", min=2)
         self._video_in_dw = int(value)
+
+    @property
+    def user_data(self) -> UserData:
+        """User data passed from the filter."""
+        return self._user_data
+
+    def _set_user_data(
+        self,
+        user_data: str,
+        container_fps: float,
+        display_fps: float
+    ):
+        validate_type(
+            value=user_data,
+            expected_types=str,
+            label="user_data")
+        self._user_data = UserData(
+            user_data=user_data,
+            container_fps=container_fps,
+            display_fps=display_fps
+        )
 
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
@@ -499,8 +548,8 @@ def mvtools(mpvd: MPVData) -> vs.VideoNode:
         super=super_clip,
         mvbw=bwd_vec,
         mvfw=fwd_vec,
-        num=int(clip.fps.numerator * mpvd.user_data.fps_factor),
-        den=int(clip.fps.denominator),
+        num=int(mpvd.user_data.target_fps * FPS_PRECISION),
+        den=int(FPS_PRECISION),
         thscd1=200,
         thscd2=64
     )
@@ -549,7 +598,12 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
     clip = core.rife.RIFE(
         clip=clip,
         model=mpvd.user_data.rife_model,
-        factor_num=int(mpvd.user_data.fps_factor * FPS_PRECISION),
+        factor_num=int(
+            mpvd.user_data.target_fps
+            * clip.fps.denominator
+            / clip.fps.numerator
+            * FPS_PRECISION
+        ),
         factor_den=int(FPS_PRECISION),
         gpu_id=mpvd.user_data.rife_gpu_id,
         gpu_thread=2,
