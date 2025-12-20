@@ -18,20 +18,8 @@ FPS_PRECISION = 1e6
 # Load shared libraries
 home = os.path.expanduser("~")
 lib_dir = os.path.join(home, ".local/lib/interpolation")
-try:
-    core.std.LoadPlugin(path=f"{lib_dir}/librife.so")
-except (OSError, FileNotFoundError) as e:
-    raise FileNotFoundError(
-        f"'{lib_dir}/librife.so' missing. Did you forget to build the "
-        "libraries? README.md for more info."
-    ) from e
-try:
-    core.std.LoadPlugin(path=f"{lib_dir}/libmvtools.so")
-except (OSError, FileNotFoundError) as e:
-    raise FileNotFoundError(
-        f"'{lib_dir}/libmvtools.so' missing. Did you forget to build the "
-        "libraries? README.md for more info."
-    ) from e
+core.std.LoadPlugin(path=f"{lib_dir}/librife.so")
+core.std.LoadPlugin(path=f"{lib_dir}/libmvtools.so")
 
 
 class UserData:
