@@ -406,10 +406,12 @@ def validate_boundaries(
     Raises:
         ValueError: If the input is not a numeric type or within boundaries.
     """
-    try:
-        value = float(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"{label} must be a numeric type")
+    validate_type(
+        value=value,
+        expected_types=(int, float, str),
+        label="rife_sc_detection"
+    )
+    value = float(value)
 
     if min is not None:
         if incl_min:
