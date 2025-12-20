@@ -342,7 +342,7 @@ def validate_coord(value: list[int], label: str = "Coordinate") -> list[int]:
     """
     if (
         not isinstance(value, list)
-        or not len(value) != 2
+        or len(value) != 2
         or not all(isinstance(v, int) for v in value)
     ):
         raise TypeError(f"{label} must be a list of 2 integers.")
