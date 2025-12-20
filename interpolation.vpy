@@ -72,7 +72,7 @@ class MPVData:
 
     @property
     def display_fps(self) -> float:
-        """Refresh rate of the current display"""
+        """Refresh rate of the current display."""
         return self._display_fps
 
     def _set_display_fps(self, value: int | float | str):
@@ -166,7 +166,6 @@ class UserData:
     ]
 
     def __init__(self, parent: MPVData, user_data_string: str):
-        # Parent
         self._parent = parent
 
         # Default values for the user data
