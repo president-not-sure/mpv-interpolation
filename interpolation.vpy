@@ -136,17 +136,15 @@ class MPVData:
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
         d = {}
-        for name in self.__slots__:
-            name = name.lstrip('_')
-            prop = getattr(self, name)
-            if not prop:
-                d[name] = ""
-            elif isinstance(prop, UserData):
-                d[name] = prop.to_dict()
+        for public_name in self.__slots__:
+            public_name = public_name.lstrip('_')
+            prop = getattr(self, public_name)
+            if isinstance(prop, UserData):
+                d[public_name] = prop.to_dict()
             elif isinstance(prop, vs.VideoNode):
-                d[name] = str(prop)
+                d[public_name] = str(prop)
             else:
-                d[name] = prop
+                d[public_name] = prop
         return d
 
     def __str__(self) -> str:
@@ -305,16 +303,16 @@ class UserData:
 
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
-        filter = ("_partent")
+        filter = ("_parent")
         d = {}
-        for name in self.__slots__:
-            if name not in filter:
-                name = name.lstrip('_')
-                prop = getattr(self, name)
+        for public_name in self.__slots__:
+            if public_name not in filter:
+                public_name = public_name.lstrip('_')
+                prop = getattr(self, public_name)
                 if isinstance(prop, vs.VideoNode):
-                    d[name] = str(prop)
+                    d[public_name] = str(prop)
                 else:
-                    d[name] = prop
+                    d[public_name] = prop
         return d
 
     def __str__(self) -> str:
