@@ -30,6 +30,7 @@ class UserData:
         '_parent',
         '_rife_gpu_id',
         '_rife_model',
+        '_rife_sc_detection',
         '_target_fps'
     ]
 
@@ -122,6 +123,22 @@ class UserData:
             max=last_model_index
         )
         self._rife_model = int(value)
+
+    @property
+    def rife_sc_detection(self) -> float:
+        """
+        Scene change detection, which prevents interpolation in areas with
+        significant scene changes.
+        """
+        return self._rife_sc_detection
+
+    def _set_rife_sc_detection(self, value: bool | int | str = True):
+        validate_type(
+            value=value,
+            expected_types=(bool, int, str),
+            label="rife_sc_detection"
+        )
+        self._rife_sc_detection = bool(value)
 
     @property
     def target_fps(self) -> float:
@@ -545,20 +562,29 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
 
     clip = prepare_clip(mpvd)
 
-    super_clip = core.mv.Super(clip=clip)
-    # Common parameters for motion vector analysis
-    blksize = 32
-    common_analyse_params = {
-        'blksize': blksize,
-        'overlap': int(blksize / 8),
-        'truemotion': True
-    }
-    # Backward motion vectors
-    bwd_vec = core.mv.Analyse(
-        super=super_clip,
-        isb=True,
-        **common_analyse_params
-    )
+    if mpvd.user_data.rife_sc_detection:
+        super_clip = core.mv.Super(clip=clip)
+        # Common parameters for motion vector analysis
+        blksize = 32
+        common_analyse_params = {
+            'blksize': blksize,
+            'overlap': int(blksize / 8),
+            'truemotion': True
+        }
+        # Backward motion vectors
+        bwd_vec = core.mv.Analyse(
+            super=super_clip,
+            isb=True,
+            **common_analyse_params
+        )
+
+        # Only interpolate where needed
+        clip = core.mv.SCDetection(
+            clip=clip,
+            vectors=bwd_vec,
+            thscd1=200,
+            thscd2=64
+        )
 
     # RIFE requires RGB 32bit input. Convert and restore after interpolation.
     original_format = clip.format.id
@@ -566,14 +592,6 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
         clip=clip,
         format=vs.RGBS,
         matrix_in=vs.MATRIX_BT709
-    )
-
-    # Only interpolate where needed
-    clip = core.mv.SCDetection(
-        clip=clip,
-        vectors=bwd_vec,
-        thscd1=200,
-        thscd2=64
     )
 
     # AI assisted Real-Time Intermediate Flow Estimation
@@ -591,7 +609,7 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
         gpu_thread=2,
         tta=False,
         uhd=True,
-        sc=True,
+        sc=mpvd.user_data.rife_sc_detection,
         list_gpu=False
     )
 
