@@ -27,29 +27,25 @@ class UserData:
     __slots__ = [
         '_display_factor',
         '_library',
+        '_parent',
         '_rife_gpu_id',
         '_rife_model',
         '_target_fps'
     ]
 
-    def __init__(
-        self,
-        user_data: str,
-        container_fps: float,
-        display_fps: float
-    ):
+    def __init__(self, parent: MPVData):
+        # Parent
+        self._parent = parent
+
         # Default values for the user data
         self._set_display_factor("1.0")
         self._set_library("mvtools")
         self._set_rife_gpu_id(0)
         self._set_rife_model(41)
-        self._set_target_fps(
-            value=display_fps,
-            container_fps=container_fps,
-            display_fps=display_fps
-        )
+        self._set_rife_sc_detection(True)
+        self._set_target_fps(self._parent.display_fps)
 
-        self._set_user_options(user_data)
+        self._set_user_options(self._parent.user_data)
 
     @property
     def display_factor(self) -> float:
@@ -132,12 +128,7 @@ class UserData:
         """Frame rate target."""
         return self._target_fps
 
-    def _set_target_fps(
-        self,
-        value: int | float | str,
-        container_fps: float,
-        display_fps: float
-    ):
+    def _set_target_fps(self, value: int | float | str):
         validate_type(
             value=value,
             expected_types=(int, float, str),
@@ -146,31 +137,35 @@ class UserData:
         value = float(value)
 
         # Clamp target_fps
-        if value < container_fps:
-            self._target_fps = container_fps
+        if value < self._parent.container_fps:
+            self._target_fps = self._parent.container_fps
             print(
                 f"\nWarning: target_fps was lesser than the videos's fps "
-                f"({container_fps}). Clamping target_fps to {container_fps}."
+                f"({self._parent.container_fps}). Clamping target_fps to "
+                f"{self._parent.container_fps}."
             )
-        elif value > display_fps:
+        elif value > self._parent.display_fps:
             print(
                 f"\nWarning: target_fps was greater than the display's fps "
-                f"({display_fps}). Clamping target_fps to {display_fps}."
+                f"({self._parent.display_fps}). Clamping target_fps to "
+                f"{self._parent.display_fps}."
             )
-            self._target_fps = display_fps
+            self._target_fps = self._parent.display_fps
         else:
             self._target_fps = value
 
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
+        filter = ("_partent")
         d = {}
         for name in self.__slots__:
-            name = name.lstrip('_')
-            prop = getattr(self, name)
-            if isinstance(prop, vs.VideoNode):
-                d[name] = str(prop)
-            else:
-                d[name] = prop
+            if name not in filter:
+                name = name.lstrip('_')
+                prop = getattr(self, name)
+                if isinstance(prop, vs.VideoNode):
+                    d[name] = str(prop)
+                else:
+                    d[name] = prop
         return d
 
     def __str__(self) -> str:
@@ -235,11 +230,7 @@ class MPVData:
         self._set_video_in_dw(video_in_dw)
 
         # Invoke last because it needs display_fps and display_fps initialized
-        self._set_user_data(
-            user_data=user_data,
-            container_fps=self.container_fps,
-            display_fps=self.display_fps
-        )
+        self._set_user_data(user_data)
 
     @property
     def container_fps(self) -> float:
@@ -311,21 +302,12 @@ class MPVData:
         """User data passed from the filter."""
         return self._user_data
 
-    def _set_user_data(
-        self,
-        user_data: str,
-        container_fps: float,
-        display_fps: float
-    ):
+    def _set_user_data(self, value: str):
         validate_type(
-            value=user_data,
+            value=value,
             expected_types=str,
             label="user_data")
-        self._user_data = UserData(
-            user_data=user_data,
-            container_fps=container_fps,
-            display_fps=display_fps
-        )
+        self._user_data = UserData(self)
 
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
