@@ -90,7 +90,11 @@ class UserData:
         return self._rife_gpu_id
 
     def _set_rife_gpu_id(self, value: int | str):
-        validate_type(value=value, expected_types=(int, str))
+        validate_type(
+            value=value,
+            expected_types=(int, str),
+            label="rife_gpu_id"
+        )
         validate_boundaries(value=value, label="rife_gpu_id", min=0)
         self._rife_gpu_id = int(value)
 
@@ -100,7 +104,11 @@ class UserData:
         return self._rife_model
 
     def _set_rife_model(self, value: int | str):
-        validate_type(value=value, expected_types=(int, str))
+        validate_type(
+            value=value,
+            expected_types=(int, str),
+            label="rife_model"
+        )
 
         models_dir = os.path.join(lib_dir, "models")
 
@@ -141,7 +149,7 @@ class UserData:
 
     def _set_user_options(self, value: str):
         """Parse and validate user_data"""
-        validate_type(value, str)
+        validate_type(value=value, expected_types=str, label="user_options")
 
         if value:
             pairs = value.split(",")
@@ -237,7 +245,7 @@ class MPVData:
         return self._user_data
 
     def _set_user_data(self, value: str):
-        validate_type(value, str)
+        validate_type(value=value, expected_types=str, label="user_data")
         self._user_data = UserData(value)
 
     @property
@@ -246,7 +254,11 @@ class MPVData:
         return self._video_in
 
     def _set_video_in(self, value: vs.VideoNode):
-        validate_type(value, vs.VideoNode)
+        validate_type(
+            value=value,
+            expected_types=vs.VideoNode,
+            label="video_in"
+        )
         self._video_in = value
 
     @property
@@ -288,13 +300,18 @@ class MPVData:
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
-def validate_type(value: Any, expected_types: Any) -> Any:
+def validate_type(
+    value: Any,
+    expected_types: Any,
+    label: str = "Value"
+) -> Any:
     """
     Validate that the input is the expected type.
 
     Parameters:
         value: The value to validate.
         expected_types: The expected type or a tuple of types.
+        label: A label for the value.
 
     Returns:
         Any: The input value.
@@ -302,8 +319,18 @@ def validate_type(value: Any, expected_types: Any) -> Any:
     Raises:
         TypeError: If the input is not the expected type.
     """
+    # Normalize expected_types to a tuple
+    if isinstance(expected_types, type):
+        expected = (expected_types,)
+    else:
+        expected = tuple(expected_types)
+
     if not isinstance(value, expected_types):
-        raise TypeError(f"{type(value)} is not one of {expected_types}")
+        raise TypeError(
+            f"'{label}': expected type "
+            f"{', '.join(f"'{t.__name__}'" for t in expected)} "
+            f"got '{type(value).__name__}'"
+        )
 
     return value
 
@@ -391,8 +418,8 @@ def downscale(clip: vs.VideoNode, mpvd: MPVData):
     Scale the video to fit within the display's resolution multiplied by
     user-provided display_factor. It never upscales the video.
     """
-    validate_type(clip, vs.VideoNode)
-    validate_type(mpvd, MPVData)
+    validate_type(value=clip, expected_types=vs.VideoNode, label="clip")
+    validate_type(value=mpvd, expected_types=MPVData, label="mpvd")
 
     display_width, display_height = mpvd.display_res
 
@@ -422,7 +449,7 @@ def downscale(clip: vs.VideoNode, mpvd: MPVData):
 
 def prepare_clip(mpvd: MPVData):
     """Downscale clip and set its frame rate."""
-    validate_type(mpvd, MPVData)
+    validate_type(value=mpvd, expected_types=MPVData, label="mpvd")
 
     clip = mpvd.video_in
 
@@ -441,7 +468,7 @@ def prepare_clip(mpvd: MPVData):
 
 def mvtools(mpvd: MPVData) -> vs.VideoNode:
     """Apply MVTools frame interpolation to a video clip."""
-    validate_type(mpvd, MPVData)
+    validate_type(value=mpvd, expected_types=MPVData, label="mpvd")
 
     clip = prepare_clip(mpvd)
 
@@ -482,7 +509,7 @@ def mvtools(mpvd: MPVData) -> vs.VideoNode:
 
 def rife(mpvd: MPVData) -> vs.VideoNode:
     """Apply RIFE frame interpolation to a video clip."""
-    validate_type(mpvd, MPVData)
+    validate_type(value=mpvd, expected_types=MPVData, label="mpvd")
 
     clip = prepare_clip(mpvd)
 
