@@ -22,6 +22,138 @@ core.std.LoadPlugin(path=f"{lib_dir}/librife.so")
 core.std.LoadPlugin(path=f"{lib_dir}/libmvtools.so")
 
 
+class MPVData:
+    """Holds mpv-provided video information and validated user options."""
+    __slots__ = [
+        '_container_fps',
+        '_display_fps',
+        '_display_res',
+        '_user_data',
+        '_video_in',
+        '_video_in_dh',
+        '_video_in_dw'
+    ]
+
+    def __init__(
+        self,
+        container_fps: float,
+        display_fps: float,
+        display_res: list[int],
+        user_data: str,
+        video_in_dh: int,
+        video_in_dw: int,
+        video_in: vs.VideoNode
+    ):
+        """Initialize MPVData instance"""
+        # mpv provided
+        self._set_container_fps(container_fps)
+        self._set_display_fps(display_fps)
+        self._set_display_res(display_res)
+        self._set_video_in(video_in)
+        self._set_video_in_dh(video_in_dh)
+        self._set_video_in_dw(video_in_dw)
+
+        # Invoke last because it needs display_fps and display_fps initialized
+        self._set_user_data(user_data)
+
+    @property
+    def container_fps(self) -> float:
+        """FPS value as reported by file headers."""
+        return self._container_fps
+
+    def _set_container_fps(self, value: int | float | str):
+        self._container_fps = validate_boundaries(
+            value=value,
+            label="container_fps",
+            min=0,
+            incl_min=False
+        )
+
+    @property
+    def display_fps(self) -> float:
+        """Refresh rate of the current display"""
+        return self._display_fps
+
+    def _set_display_fps(self, value: int | float | str):
+        self._display_fps = validate_boundaries(
+            value=value,
+            label="display_fps",
+            min=0,
+            incl_min=False
+        )
+
+    @property
+    def display_res(self) -> list[int]:
+        """Resolution of the current display."""
+        return self._display_res
+
+    def _set_display_res(self, value: list[int]):
+        self._display_res = validate_coord(value=value, label="display_res")
+
+    @property
+    def video_in(self) -> vs.VideoNode:
+        """The mpv video source as vapoursynth clip."""
+        return self._video_in
+
+    def _set_video_in(self, value: vs.VideoNode):
+        validate_type(
+            value=value,
+            expected_types=vs.VideoNode,
+            label="video_in"
+        )
+        self._video_in = value
+
+    @property
+    def video_in_dh(self) -> int:
+        """Display height of the video."""
+        return self._video_in_dh
+
+    def _set_video_in_dh(self, value: int | float | str):
+        validate_boundaries(value=value, label="video_in_dh", min=2)
+        self._video_in_dh = int(value)
+
+    @property
+    def video_in_dw(self) -> int:
+        """Display width of the video."""
+        return self._video_in_dw
+
+    def _set_video_in_dw(self, value: int | float | str):
+        validate_boundaries(value=value, label="video_in_dw", min=2)
+        self._video_in_dw = int(value)
+
+    @property
+    def user_data(self) -> UserData:
+        """User data passed from the filter."""
+        return self._user_data
+
+    def _set_user_data(self, value: str):
+        validate_type(
+            value=value,
+            expected_types=str,
+            label="user_data")
+        self._user_data = UserData(self)
+
+    def to_dict(self) -> dict:
+        """Return a dictionary of all public properties."""
+        d = {}
+        for name in self.__slots__:
+            name = name.lstrip('_')
+            prop = getattr(self, name)
+            if not prop:
+                d[name] = ""
+            elif isinstance(prop, UserData):
+                d[name] = prop.to_dict()
+            elif isinstance(prop, vs.VideoNode):
+                d[name] = str(prop)
+            else:
+                d[name] = prop
+        return d
+
+    def __str__(self) -> str:
+        """Return a string version of the object in JSON format."""
+        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
+
+
 class UserData:
     """Holds validated user data."""
     __slots__ = [
@@ -213,138 +345,6 @@ class UserData:
                     # Dynamically calls a set method by name with parameter
                     method = getattr(self, f"_set{k}")
                     method(v)
-
-
-class MPVData:
-    """Holds mpv-provided video information and validated user options."""
-    __slots__ = [
-        '_container_fps',
-        '_display_fps',
-        '_display_res',
-        '_user_data',
-        '_video_in',
-        '_video_in_dh',
-        '_video_in_dw'
-    ]
-
-    def __init__(
-        self,
-        container_fps: float,
-        display_fps: float,
-        display_res: list[int],
-        user_data: str,
-        video_in_dh: int,
-        video_in_dw: int,
-        video_in: vs.VideoNode
-    ):
-        """Initialize MPVData instance"""
-        # mpv provided
-        self._set_container_fps(container_fps)
-        self._set_display_fps(display_fps)
-        self._set_display_res(display_res)
-        self._set_video_in(video_in)
-        self._set_video_in_dh(video_in_dh)
-        self._set_video_in_dw(video_in_dw)
-
-        # Invoke last because it needs display_fps and display_fps initialized
-        self._set_user_data(user_data)
-
-    @property
-    def container_fps(self) -> float:
-        """FPS value as reported by file headers."""
-        return self._container_fps
-
-    def _set_container_fps(self, value: int | float | str):
-        self._container_fps = validate_boundaries(
-            value=value,
-            label="container_fps",
-            min=0,
-            incl_min=False
-        )
-
-    @property
-    def display_fps(self) -> float:
-        """Refresh rate of the current display"""
-        return self._display_fps
-
-    def _set_display_fps(self, value: int | float | str):
-        self._display_fps = validate_boundaries(
-            value=value,
-            label="display_fps",
-            min=0,
-            incl_min=False
-        )
-
-    @property
-    def display_res(self) -> list[int]:
-        """Resolution of the current display."""
-        return self._display_res
-
-    def _set_display_res(self, value: list[int]):
-        self._display_res = validate_coord(value=value, label="display_res")
-
-    @property
-    def video_in(self) -> vs.VideoNode:
-        """The mpv video source as vapoursynth clip."""
-        return self._video_in
-
-    def _set_video_in(self, value: vs.VideoNode):
-        validate_type(
-            value=value,
-            expected_types=vs.VideoNode,
-            label="video_in"
-        )
-        self._video_in = value
-
-    @property
-    def video_in_dh(self) -> int:
-        """Display height of the video."""
-        return self._video_in_dh
-
-    def _set_video_in_dh(self, value: int | float | str):
-        validate_boundaries(value=value, label="video_in_dh", min=2)
-        self._video_in_dh = int(value)
-
-    @property
-    def video_in_dw(self) -> int:
-        """Display width of the video."""
-        return self._video_in_dw
-
-    def _set_video_in_dw(self, value: int | float | str):
-        validate_boundaries(value=value, label="video_in_dw", min=2)
-        self._video_in_dw = int(value)
-
-    @property
-    def user_data(self) -> UserData:
-        """User data passed from the filter."""
-        return self._user_data
-
-    def _set_user_data(self, value: str):
-        validate_type(
-            value=value,
-            expected_types=str,
-            label="user_data")
-        self._user_data = UserData(self)
-
-    def to_dict(self) -> dict:
-        """Return a dictionary of all public properties."""
-        d = {}
-        for name in self.__slots__:
-            name = name.lstrip('_')
-            prop = getattr(self, name)
-            if not prop:
-                d[name] = ""
-            elif isinstance(prop, UserData):
-                d[name] = prop.to_dict()
-            elif isinstance(prop, vs.VideoNode):
-                d[name] = str(prop)
-            else:
-                d[name] = prop
-        return d
-
-    def __str__(self) -> str:
-        """Return a string version of the object in JSON format."""
-        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
 
 def validate_type(
