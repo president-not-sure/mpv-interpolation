@@ -300,20 +300,26 @@ def validate_boundaries(
     return value
 
 
-def validate_coord(value: list[int], label: str = "List") -> list[int]:
+def validate_coord(value: list[int], label: str = "Coordinate") -> list[int]:
     """
-    Validate that the input is a list of 2 integers.
+    Validate that the input is a coordinate.
+
+    Parameters:
+        value: The value to validate.
+        label: Label for error messages.
 
     Returns:
         [int, int]: The input value.
 
     Raises:
-        TypeError: If the input is not [int, int].
+        TypeError: If the input is not a list of 2 integers.
     """
-    if not isinstance(value, list):
-        raise TypeError(f"{label} must be a list")
-    if len(value) != 2 or not all(isinstance(v, int) for v in value):
-        raise TypeError(f"{label} must be [int, int]")
+    if (
+        not isinstance(value, list)
+        or not len(value) != 2
+        or not all(isinstance(v, int) for v in value)
+    ):
+        raise TypeError(f"{label} must be a list of 2 integers.")
 
     return value
 
