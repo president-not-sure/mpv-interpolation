@@ -9,6 +9,7 @@ Licensed under GPLv2
 
 import json
 import os
+from typing import Any, Type
 import vapoursynth as vs
 core = vs.core
 
@@ -257,6 +258,26 @@ class MPVData:
     def __str__(self) -> str:
         """Return a string version of the object in JSON format."""
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
+
+
+def validate_type(value: Any, expected_types: Any) -> Any:
+    """
+    Validate that the input is the expected type.
+
+    Parameters:
+        value: The value to validate.
+        expected_types: The expected type or a tuple of types.
+
+    Returns:
+        Any: The input value.
+
+    Raises:
+        TypeError: If the input is not the expected type.
+    """
+    if not isinstance(value, expected_types):
+        raise TypeError(f"{type(value)} is not one of {expected_types}")
+
+    return value
 
 
 def validate_boundaries(
