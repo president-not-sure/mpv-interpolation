@@ -71,13 +71,19 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 - valid values: 0.01 to 1.0
 - default: 1.0
 
+### rife_gpu_id
+
+- description: Sets the GPU used by RIFE.
+- valid values: >= 0
+- default: 0
+
 ### Examples
 
 Add the following in your `~/.config/mpv/input.conf` or `/.var/app/io.mpv.Mpv/config/mpv/input.conf` for Flatpak users. `~~home/` is mpv's config directory.
 
 ```conf
 ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools,display_factor=1.0,fps_factor=2"
-ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5,fps_factor=2"
+ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5,fps_factor=2,rife_gpu_id=0"
 ```
 
 Add the following in your `~/.config/mpv/mpv.conf` or `/.var/app/io.mpv.Mpv/config/mpv.conf` for Flatpak users to have basic interpolation without MVTools
