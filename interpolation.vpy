@@ -78,7 +78,7 @@ class UserData:
         if value not in valid_libraries:
             raise ValueError(
                 f"'{value}' is not a valid library. "
-                f"Valid options are: {valid_libraries}."
+                f"Valid libraries are: {valid_libraries}."
             )
         self._library = value
 
