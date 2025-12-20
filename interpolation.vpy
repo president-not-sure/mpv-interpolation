@@ -53,7 +53,7 @@ class MPVData:
         self._set_video_in_dh(video_in_dh)
         self._set_video_in_dw(video_in_dw)
 
-        # Invoke last because it needs display_fps and display_fps initialized
+        # Call last as it needs 'container_fps' and 'display_fps' initialized
         self._set_user_data(user_data)
 
     @property
@@ -126,12 +126,12 @@ class MPVData:
         """User data passed from the filter."""
         return self._user_data
 
-    def _set_user_data(self, value: str):
+    def _set_user_data(self, user_data: str):
         validate_type(
-            value=value,
+            value=user_data,
             expected_types=str,
             label="user_data")
-        self._user_data = UserData(self)
+        self._user_data = UserData(parent=self, user_data_string=user_data)
 
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
@@ -166,7 +166,7 @@ class UserData:
         '_target_fps'
     ]
 
-    def __init__(self, parent: MPVData):
+    def __init__(self, parent: MPVData, user_data_string: str):
         # Parent
         self._parent = parent
 
@@ -178,7 +178,7 @@ class UserData:
         self._set_rife_sc_detection(True)
         self._set_target_fps(self._parent.display_fps)
 
-        self._set_user_options(self._parent.user_data)
+        self._parse_user_data(user_data_string)
 
     @property
     def display_factor(self) -> float:
@@ -321,29 +321,27 @@ class UserData:
         """Return a string version of the object in JSON format."""
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
-    def _set_user_options(self, value: str):
-        """Parse and validate user_data"""
-        validate_type(value=value, expected_types=str, label="user_options")
-
-        if value:
-            pairs = value.split(",")
+    def _parse_user_data(self, user_data_string: str):
+        """
+        Parse mpv's 'user_data' for user options, validate them, and
+        dynamically call the corresponding '_set_*' methods.
+        """
+        if user_data_string:
+            pairs = user_data_string.split(",")
             for p in pairs:
                 # Split each part by '=' to get the key-value pair
                 if "=" not in p:
-                    raise ValueError(
-                        f"Invalid format for '{p}', expected key=value format."
-                    )
+                    raise ValueError(f"Expected 'key=value' format, got '{p}'")
                 k, v = p.split("=", 1)
-                k = f"_{k}"
+                k = f"{k}"
 
-                valid_options = self.__slots__
-                if k not in valid_options:
+                # Dynamically calls a '_set_*' method by name
+                method = getattr(self, f"_set_{k}", None)
+                if method is None:
                     raise ValueError(
-                        f"'{k.lstrip('_')}' is not a valid option."
+                        f"'{k}' is not a valid option"
                     )
                 else:
-                    # Dynamically calls a set method by name with parameter
-                    method = getattr(self, f"_set{k}")
                     method(v)
 
 
