@@ -39,7 +39,8 @@ class UserData:
     __slots__ = [
         '_display_factor',
         '_fps_factor',
-        '_library'
+        '_library',
+        '_rife_gpu_id'
     ]
 
     def __init__(self, user_data: str):
@@ -47,6 +48,7 @@ class UserData:
         self._set_display_factor("1.0")
         self._set_fps_factor("2.0")
         self._set_library("mvtools")
+        self._set_rife_gpu_id(0)
 
         self._set_user_options(user_data)
 
@@ -91,6 +93,16 @@ class UserData:
                 f"Valid options are: {valid_libraries}."
             )
         self._library = value
+
+    @property
+    def rife_gpu_id(self) -> int:
+        """RIFE GPU ID"""
+        return self._rife_gpu_id
+
+    def _set_rife_gpu_id(self, value: int | str):
+        validate_type(value=value, expected_types=(int, str))
+        validate_boundaries(value=value, label="rife_gpu_id", min=0)
+        self._rife_gpu_id = int(value)
 
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
@@ -486,7 +498,7 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
         model=41,
         factor_num=int(mpvd.user_data.fps_factor * FPS_PRECISION),
         factor_den=int(FPS_PRECISION),
-        gpu_id=0,
+        gpu_id=mpvd.user_data.rife_gpu_id,
         gpu_thread=2,
         tta=False,
         uhd=True,
