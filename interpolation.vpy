@@ -110,8 +110,8 @@ class UserData:
 
     def _set_user_options(self, value: str):
         """Parse and validate user_data"""
-        if not isinstance(value, str):
-            raise ValueError("user_data is not a string.")
+        validate_type(value, str)
+
         if value:
             pairs = value.split(",")
             for p in pairs:
@@ -206,8 +206,7 @@ class MPVData:
         return self._user_data
 
     def _set_user_data(self, value: str):
-        if not isinstance(value, str):
-            raise TypeError("user_data is not a string.")
+        validate_type(value, str)
         self._user_data = UserData(value)
 
     @property
@@ -216,10 +215,8 @@ class MPVData:
         return self._video_in
 
     def _set_video_in(self, value: vs.VideoNode):
-        if isinstance(value, vs.VideoNode):
-            self._video_in = value
-        else:
-            raise TypeError(f"{type(value)} is not of type vs.VideoNode.")
+        validate_type(value, vs.VideoNode)
+        self._video_in = value
 
     @property
     def video_in_dh(self) -> int:
@@ -363,6 +360,9 @@ def downscale(clip: vs.VideoNode, mpvd: MPVData):
     Scale the video to fit within the display's resolution multiplied by
     user-provided display_factor. It never upscales the video.
     """
+    validate_type(clip, vs.VideoNode)
+    validate_type(mpvd, MPVData)
+
     display_width, display_height = mpvd.display_res
 
     # Calculate scaling factors to fit width and height within display
@@ -391,6 +391,8 @@ def downscale(clip: vs.VideoNode, mpvd: MPVData):
 
 def prepare_clip(mpvd: MPVData):
     """Downscale clip and set its frame rate."""
+    validate_type(mpvd, MPVData)
+
     clip = mpvd.video_in
 
     clip = downscale(clip=clip, mpvd=mpvd)
@@ -408,6 +410,8 @@ def prepare_clip(mpvd: MPVData):
 
 def mvtools(mpvd: MPVData) -> vs.VideoNode:
     """Apply MVTools frame interpolation to a video clip."""
+    validate_type(mpvd, MPVData)
+
     clip = prepare_clip(mpvd)
 
     super = core.mv.Super(clip=clip)
@@ -447,6 +451,8 @@ def mvtools(mpvd: MPVData) -> vs.VideoNode:
 
 def rife(mpvd: MPVData) -> vs.VideoNode:
     """Apply RIFE frame interpolation to a video clip."""
+    validate_type(mpvd, MPVData)
+
     clip = prepare_clip(mpvd)
 
     super = core.mv.Super(clip=clip)
