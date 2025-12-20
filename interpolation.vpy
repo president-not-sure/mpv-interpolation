@@ -233,7 +233,7 @@ class MPVData:
         return self._video_in_dw
 
     def _set_video_in_dw(self, value: int | float | str):
-        validate_boundaries(value=value, label="video_in_dh", min=2)
+        validate_boundaries(value=value, label="video_in_dw", min=2)
         self._video_in_dw = int(value)
 
     def to_dict(self) -> dict:
