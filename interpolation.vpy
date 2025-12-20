@@ -17,7 +17,7 @@ FPS_PRECISION = 1e6
 
 # Load shared libraries
 home = os.path.expanduser("~")
-lib_dir = f"{home}/.local/lib/interpolation"
+lib_dir = os.path.join(home, ".local/lib/interpolation")
 try:
     core.std.LoadPlugin(path=f"{lib_dir}/librife.so")
 except (OSError, FileNotFoundError) as e:
