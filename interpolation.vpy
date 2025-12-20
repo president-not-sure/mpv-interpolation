@@ -303,7 +303,7 @@ class MPVData:
 def validate_type(
     value: Any,
     expected_types: Any,
-    label: str = "Value"
+    label: str | None = None
 ) -> Any:
     """
     Validate that the input is the expected type.
@@ -325,12 +325,15 @@ def validate_type(
     else:
         expected = tuple(expected_types)
 
-    if not isinstance(value, expected_types):
-        raise TypeError(
-            f"'{label}': expected type "
-            f"{', '.join(f"'{t.__name__}'" for t in expected)} "
-            f"got '{type(value).__name__}'"
+    if not isinstance(value, expected):
+        expected_str = ", ".join(f"'{t.__name__}'" for t in expected)
+        msg = (
+            f"expected type {expected_str}, "
+            f"but got '{type(value).__name__}'"
         )
+        if label:
+            msg = f"'{label}': {msg}"
+        raise TypeError(msg)
 
     return value
 
