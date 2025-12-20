@@ -289,7 +289,15 @@ def validate_boundaries(
     incl_max: bool = True
 ) -> float:
     """
-    Validate that a numeric value falls within optional boundaries.
+    Validate that a numeric value falls within boundaries.
+
+    Parameters:
+        value: The value to validate.
+        label: Label for error messages.
+        min: Minimum boundary.
+        incl_min: Whether the min boundary is inclusive.
+        max: Maximum boundary.
+        incl_max: Whether the max boundary is inclusive.
 
     Returns:
         float: The input value cast into a float.
