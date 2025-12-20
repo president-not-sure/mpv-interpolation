@@ -81,6 +81,13 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 - default: 0
 - type: int
 
+### rife_model
+
+- description: RIFE's model index in the models directory.
+- constraint: >= 0 to total number of available models minus 1
+- default: 41
+- type: int
+
 ### Examples
 
 Add the following in your `~/.config/mpv/input.conf` or `/.var/app/io.mpv.Mpv/config/mpv/input.conf` for Flatpak users. `~~home/` is mpv's config directory.

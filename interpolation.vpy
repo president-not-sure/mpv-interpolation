@@ -28,7 +28,8 @@ class UserData:
         '_display_factor',
         '_fps_factor',
         '_library',
-        '_rife_gpu_id'
+        '_rife_gpu_id',
+        '_rife_model'
     ]
 
     def __init__(self, user_data: str):
@@ -37,6 +38,7 @@ class UserData:
         self._set_fps_factor("2.0")
         self._set_library("mvtools")
         self._set_rife_gpu_id(0)
+        self._set_rife_model(41)
 
         self._set_user_options(user_data)
 
@@ -91,6 +93,35 @@ class UserData:
         validate_type(value=value, expected_types=(int, str))
         validate_boundaries(value=value, label="rife_gpu_id", min=0)
         self._rife_gpu_id = int(value)
+
+    @property
+    def rife_model(self) -> int:
+        """RIFE's model index in the models directory."""
+        return self._rife_model
+
+    def _set_rife_model(self, value: int | str):
+        validate_type(value=value, expected_types=(int, str))
+
+        models_dir = os.path.join(lib_dir, "models")
+
+        # Every model has a directory and an index starting from 0.
+        # Get the total model count to get the higher model index boundary.
+        model_index_count = 0
+        for entry in os.scandir(models_dir):
+            if entry.is_dir():
+                model_index_count += 1
+        if model_index_count > 0:
+            last_model_index = model_index_count - 1
+        else:
+            raise FileNotFoundError(f"No models found in {models_dir}")
+
+        validate_boundaries(
+            value=value,
+            label="rife_model",
+            min=0,
+            max=last_model_index
+        )
+        self._rife_model = int(value)
 
     def to_dict(self) -> dict:
         """Return a dictionary of all public properties."""
@@ -489,7 +520,7 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
     # AI assisted Real-Time Intermediate Flow Estimation
     clip = core.rife.RIFE(
         clip=clip,
-        model=41,
+        model=mpvd.user_data.rife_model,
         factor_num=int(mpvd.user_data.fps_factor * FPS_PRECISION),
         factor_den=int(FPS_PRECISION),
         gpu_id=mpvd.user_data.rife_gpu_id,
