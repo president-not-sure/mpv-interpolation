@@ -45,8 +45,7 @@ class UserData:
     @property
     def display_factor(self) -> float:
         """
-        Scaling factor applied to the display size to limit the video
-        dimensions.
+        display dimensions * display_factor = target scaling of the video.
         """
         return self._display_factor
 
@@ -418,8 +417,7 @@ def make_even(number: float) -> int:
 
 def downscale(clip: vs.VideoNode, mpvd: MPVData):
     """
-    Scale the video to fit within the display's resolution multiplied by
-    user-provided display_factor. It never upscales the video.
+    display dimensions * display_factor = target scaling of the video.
     """
     validate_type(value=clip, expected_types=vs.VideoNode, label="clip")
     validate_type(value=mpvd, expected_types=MPVData, label="mpvd")

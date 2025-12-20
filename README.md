@@ -55,8 +55,8 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 
 ### display_factor
 
-- description: Scaling factor applied to the display size to limit the video dimensions. It never upscales the video.
-- constraint: 0.05 to 1.0
+- description: display dimensions * display_factor = target scaling of the video.
+- constraint: Between 0.05 and 1.0 inclusively.
 - default: 1.0
 - type: float
 
