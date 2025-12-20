@@ -46,7 +46,7 @@ class MPVData:
         video_in: vs.VideoNode
     ):
         """Initialize MPVData instance"""
-        # mpv provided
+        # mpv-provided
         self._set_container_fps(container_fps)
         self._set_display_fps(display_fps)
         self._set_display_res(display_res)
