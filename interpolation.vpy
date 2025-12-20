@@ -445,7 +445,7 @@ def mvtools(mpvd: MPVData) -> vs.VideoNode:
 
     clip = prepare_clip(mpvd)
 
-    super = core.mv.Super(clip=clip)
+    super_clip = core.mv.Super(clip=clip)
     # Common parameters for motion vector analysis
     blksize = 32
     common_analyse_params = {
@@ -455,12 +455,12 @@ def mvtools(mpvd: MPVData) -> vs.VideoNode:
     }
     # Backward and forward motion vectors
     bwd_vec = core.mv.Analyse(
-        super=super,
+        super=super_clip,
         isb=True,
         **common_analyse_params
     )
     fwd_vec = core.mv.Analyse(
-        super=super,
+        super=super_clip,
         isb=False,
         **common_analyse_params
     )
@@ -468,7 +468,7 @@ def mvtools(mpvd: MPVData) -> vs.VideoNode:
     # Motion estimation and compensation.
     clip = core.mv.FlowFPS(
         clip=clip,
-        super=super,
+        super=super_clip,
         mvbw=bwd_vec,
         mvfw=fwd_vec,
         num=int(clip.fps.numerator * mpvd.user_data.fps_factor),
@@ -486,7 +486,7 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
 
     clip = prepare_clip(mpvd)
 
-    super = core.mv.Super(clip=clip)
+    super_clip = core.mv.Super(clip=clip)
     # Common parameters for motion vector analysis
     blksize = 32
     common_analyse_params = {
@@ -496,7 +496,7 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
     }
     # Backward motion vectors
     bwd_vec = core.mv.Analyse(
-        super=super,
+        super=super_clip,
         isb=True,
         **common_analyse_params
     )
