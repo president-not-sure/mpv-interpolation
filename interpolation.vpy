@@ -9,7 +9,7 @@ Licensed under GPLv2
 
 import json
 import os
-from typing import Any, Type
+from typing import Any
 import vapoursynth as vs
 core = vs.core
 
