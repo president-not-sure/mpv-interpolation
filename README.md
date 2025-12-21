@@ -67,34 +67,90 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 - default: mvtools
 - type: str
 
-### rife_gpu_id
+### rife.gpu_id
 
 - description: ID of the GPU used by RIFE.
 - constraint: Greater or equal to 0.
 - default: 0
 - type: int
 
-### rife_model
+### rife.gpu_thread
+
+- description: Number of GPU threads used by RIFE.
+- constraint: Greater or equal to 1.
+- default: 2
+- type: int
+
+### rife.list_gpu
+
+- description: List available GPU IDs without performing interpolation.
+- constraint: true or false
+- default: false
+- type: bool
+
+### rife.model
 
 - description: RIFE's model index in the models directory.
 - constraint: Between 0 and the total number of available models minus 1.
 - default: 41
 - type: int
 
-### target_fps
+### rife.sc
 
-- description: Target frame rate.
-- constraint: Clamped between the videos FPS and the display FPS.
-- default: display FPS
+- description: Scene change detection, which prevents interpolation in areas with significant scene changes.
+- constraint: true or false
+- default: true
+- type: bool
+
+### rife.tta
+
+- description: Whether to apply TTA (Test-Time Augmentation) during interpolation.
+- constraint: true or false
+- default: false
+- type: bool
+
+### rife.uhd
+
+- description: Ultra High Definition mode for interpolation.
+- constraint: true or false
+- default: true
+- type: bool
+
+### rife.target.fps
+
+- description: Target frame rate for RIFE interpolation. Mutually exclusive with factor.
+- constraint: Clamped to the video's FPS.
+- default: Display FPS.
 - type: float
+
+### rife.target.factor
+
+- description: Factor by which to multiply the original frame rate for RIFE interpolation. Mutually exclusive with fps.
+- constraint: Greater or equal to 1.
+- default: 2
+- type: int
+
+### mvtools.target.fps
+
+- description: Target frame rate for MVTools interpolation. Mutually exclusive with factor.
+- constraint: Clamped to the video's FPS.
+- default: Display FPS.
+- type: float
+
+### mvtools.target.factor
+
+- description: Factor by which to multiply the original frame rate for MVTools interpolation. Mutually exclusive with fps.
+- constraint: Greater or equal to 1.
+- default: 2
+- type: int
 
 ### Examples
 
 Add the following in your `~/.config/mpv/input.conf` or `/.var/app/io.mpv.Mpv/config/mpv/input.conf` for Flatpak users. `~~home/` is mpv's config directory.
 
 ```conf
-ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools,target_fps=48.0"
-ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5,target_fps=48.0"
+ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools"
+ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5,rife.target.factor=2,rife.sc=false"
 ```
 
 Or even:

@@ -8,13 +8,13 @@ Licensed under GPLv2
 """
 
 from __future__ import annotations
+from fractions import Fraction
+
 import json
 import os
-from typing import Any
 import vapoursynth as vs
 core = vs.core
 
-FPS_PRECISION = 1e6
 
 # Load shared libraries
 home = os.path.expanduser("~")
@@ -23,160 +23,90 @@ core.std.LoadPlugin(path=f"{lib_dir}/librife.so")
 core.std.LoadPlugin(path=f"{lib_dir}/libmvtools.so")
 
 
-class MPVData:
-    """Holds mpv-provided video information and validated user options."""
-    __slots__ = [
-        '_container_fps',
-        '_display_fps',
-        '_display_res',
-        '_user_data',
-        '_video_in',
-        '_video_in_dh',
-        '_video_in_dw'
-    ]
+class DictMixin:
+    """Provides to_dict() and __str__() methods for configuration objects."""
+    
+    def to_dict(self) -> dict:
+        return object_to_dict(self)
+    
+    def __str__(self) -> str:
+        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
+
+class MPVData(DictMixin):
+    """Holds mpv-provided video information and validated user options."""
     def __init__(
         self,
+        name: str,
         container_fps: float,
         display_fps: float,
         display_res: list[int],
         user_data: str,
         video_in_dh: int,
         video_in_dw: int,
-        video_in: vs.VideoNode
+        video_in: vs.VideoNode,
     ):
         """Initialize MPVData instance"""
         # mpv-provided
-        self._set_container_fps(container_fps)
-        self._set_display_fps(display_fps)
-        self._set_display_res(display_res)
-        self._set_video_in(video_in)
-        self._set_video_in_dh(video_in_dh)
-        self._set_video_in_dw(video_in_dw)
+        self._container_fps = container_fps
+        self._display_fps = display_fps
+        self._display_res = display_res
+        self._video_in = video_in
+        self._video_in_dh = video_in_dh
+        self._video_in_dw = video_in_dw
 
         # Call last as it needs 'container_fps' and 'display_fps' initialized
-        self._set_user_data(user_data)
+        self._config = Config(self, user_data)
 
     @property
     def container_fps(self) -> float:
         """FPS value as reported by file headers."""
         return self._container_fps
 
-    def _set_container_fps(self, value: int | float | str):
-        self._container_fps = validate_boundaries(
-            value=value,
-            label="container_fps",
-            min=0,
-            incl_min=False
-        )
-
     @property
     def display_fps(self) -> float:
         """Refresh rate of the current display."""
         return self._display_fps
-
-    def _set_display_fps(self, value: int | float | str):
-        self._display_fps = validate_boundaries(
-            value=value,
-            label="display_fps",
-            min=0,
-            incl_min=False
-        )
 
     @property
     def display_res(self) -> list[int]:
         """Resolution of the current display."""
         return self._display_res
 
-    def _set_display_res(self, value: list[int]):
-        self._display_res = validate_coord(value=value, label="display_res")
-
     @property
     def video_in(self) -> vs.VideoNode:
         """The mpv video source as vapoursynth clip."""
         return self._video_in
-
-    def _set_video_in(self, value: vs.VideoNode):
-        validate_type(
-            value=value,
-            expected_types=vs.VideoNode,
-            label="video_in"
-        )
-        self._video_in = value
 
     @property
     def video_in_dh(self) -> int:
         """Display height of the video."""
         return self._video_in_dh
 
-    def _set_video_in_dh(self, value: int | float | str):
-        validate_boundaries(value=value, label="video_in_dh", min=2)
-        self._video_in_dh = int(value)
-
     @property
     def video_in_dw(self) -> int:
         """Display width of the video."""
         return self._video_in_dw
 
-    def _set_video_in_dw(self, value: int | float | str):
-        validate_boundaries(value=value, label="video_in_dw", min=2)
-        self._video_in_dw = int(value)
-
     @property
-    def user_data(self) -> UserData:
-        """User data passed from the filter."""
-        return self._user_data
-
-    def _set_user_data(self, user_data: str):
-        validate_type(
-            value=user_data,
-            expected_types=str,
-            label="user_data")
-        self._user_data = UserData(parent=self, user_data_string=user_data)
-
-    def to_dict(self) -> dict:
-        """Return a dictionary of all public properties."""
-        d = {}
-        for public_name in self.__slots__:
-            public_name = public_name.lstrip('_')
-            prop = getattr(self, public_name)
-            if isinstance(prop, UserData):
-                d[public_name] = prop.to_dict()
-            elif isinstance(prop, vs.VideoNode):
-                d[public_name] = str(prop)
-            else:
-                d[public_name] = prop
-        return d
-
-    def __str__(self) -> str:
-        """Return a string version of the object in JSON format."""
-        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
+    def config(self) -> Config:
+        """User configuration object."""
+        return self._config
 
 
-class UserData:
-    """Holds validated user data."""
-    __slots__ = [
-        '_display_factor',
-        '_library',
-        '_parent',
-        '_rife_gpu_id',
-        '_rife_model',
-        '_rife_sc_detection',
-        '_target_fps'
-    ]
+class Config(DictMixin):
+    """Holds validated user configuration."""
+    def __init__(self, parent: MPVData, user_data_str: str):
+        self._mpv = parent
 
-    def __init__(self, parent: MPVData, user_data_string: str):
-        self._parent = parent
+        # Default config values
+        self.display_factor = 1.0
+        self.library = "mvtools"
 
-        # Default values for the user data
-        self._set_display_factor("1.0")
-        self._set_library("mvtools")
-        self._set_rife_gpu_id(0)
-        self._set_rife_model(41)
-        self._set_rife_sc_detection(True)
-        self._set_target_fps(self._parent.display_fps)
+        self._mvtools = MVToolsConfig(self)
+        self._rife = RIFEConfig(self)
 
-        self._parse_user_data(user_data_string)
+        self._parse_user_data(user_data_str)
 
     @property
     def display_factor(self) -> float:
@@ -185,10 +115,11 @@ class UserData:
         """
         return self._display_factor
 
-    def _set_display_factor(self, value: int | float | str):
+    @display_factor.setter
+    def display_factor(self, value: int | float | str):
         self._display_factor = validate_boundaries(
-            value=value,
-            label="display_factor",
+            value,
+            "display_factor",
             min=0.05,
             max=1.0
         )
@@ -198,7 +129,8 @@ class UserData:
         """Interpolation library."""
         return self._library
 
-    def _set_library(self, value: str):
+    @library.setter
+    def library(self, value: str):
         valid_libraries = ('mvtools', 'rife')
         if value not in valid_libraries:
             raise ValueError(
@@ -208,31 +140,114 @@ class UserData:
         self._library = value
 
     @property
-    def rife_gpu_id(self) -> int:
-        """ID of the GPU used by RIFE."""
-        return self._rife_gpu_id
-
-    def _set_rife_gpu_id(self, value: int | str):
-        validate_type(
-            value=value,
-            expected_types=(int, str),
-            label="rife_gpu_id"
-        )
-        validate_boundaries(value=value, label="rife_gpu_id", min=0)
-        self._rife_gpu_id = int(value)
+    def mvtools(self) -> MVToolsConfig:
+        """MVTools configuration object."""
+        return self._mvtools
 
     @property
-    def rife_model(self) -> int:
+    def rife(self) -> RIFEConfig:
+        """RIFE configuration object."""
+        return self._rife
+
+    def _parse_user_data(self, user_data_str: str):
+        """
+        Parse mpv user_data and assign values via (possibly nested) properties.
+        """
+        if not user_data_str:
+            return
+
+        for pair in user_data_str.split(","):
+            if "=" not in pair:
+                raise ValueError(f"Expected 'key=value' format, got '{pair}'")
+
+            key, value = pair.split("=", 1)
+            path = key.split(".")
+
+            obj = self
+            for name in path[:-1]:
+                attr = getattr(type(obj), name, None)
+                if not isinstance(attr, property):
+                    raise ValueError(f"'{name}' is not a valid option group")
+                obj = getattr(obj, name)
+
+            final = path[-1]
+            prop = getattr(type(obj), final, None)
+            if not isinstance(prop, property) or prop.fset is None:
+                raise ValueError(f"'{key}' is not a valid or settable option")
+
+            setattr(obj, final, value)
+
+
+class MVToolsConfig(DictMixin):
+    """Holds validated MVTools config."""
+    def __init__(self, parent: Config):
+        self._config = parent
+
+        # Default values for the MVTools library
+        self._target = FPS(self, fps=self._config._mpv.display_fps)
+
+    @property
+    def target(self) -> FPS:
+        """Target Frame rate object."""
+        return self._target
+
+
+class RIFEConfig(DictMixin):
+    """Holds validated RIFE config."""
+    def __init__(self, parent: Config):
+        self._config = parent
+
+        # Default values for the RIFE library
+        self.gpu_id = 0
+        self.gpu_thread = 2
+        self.list_gpu = False
+        self.model = 41
+        self.sc = True
+        self.tta = False
+        self.uhd = True
+        self._target = FPS(self, factor=2)
+
+    @property
+    def target(self) -> FPS:
+        """Target Frame rate object."""
+        return self._target
+
+    @property
+    def gpu_id(self) -> int:
+        """ID of the GPU used by RIFE."""
+        return self._gpu_id
+
+    @gpu_id.setter
+    def gpu_id(self, value: int | str):
+        validate_boundaries(value, "rife.gpu_id", min=0)
+        self._gpu_id = int(value)
+
+    @property
+    def gpu_thread(self) -> int:
+        """Number of GPU threads used."""
+        return self._gpu_thread
+
+    @gpu_thread.setter
+    def gpu_thread(self, value: int | str):
+        validate_boundaries(value, "rife.gpu_thread", min=1)
+        self._gpu_thread = int(value)
+
+    @property
+    def list_gpu(self) -> bool:
+        """List GPU ID without interpolation."""
+        return self._list_gpu
+
+    @list_gpu.setter
+    def list_gpu(self, value: bool | str):
+        self._list_gpu = to_bool(value, "rife.list_gpu")
+
+    @property
+    def model(self) -> int:
         """RIFE's model index in the models directory."""
-        return self._rife_model
+        return self._model
 
-    def _set_rife_model(self, value: int | str):
-        validate_type(
-            value=value,
-            expected_types=(int, str),
-            label="rife_model"
-        )
-
+    @model.setter
+    def model(self, value: int | str):
         models_dir = os.path.join(lib_dir, "models")
 
         # Every model has a directory and an index starting from 0.
@@ -246,139 +261,161 @@ class UserData:
         else:
             raise FileNotFoundError(f"No models found in {models_dir}")
 
-        validate_boundaries(
-            value=value,
-            label="rife_model",
-            min=0,
-            max=last_model_index
-        )
-        self._rife_model = int(value)
+        validate_boundaries(value, "rife.model", min=0, max=last_model_index)
+        self._model = int(value)
 
     @property
-    def rife_sc_detection(self) -> float:
+    def sc(self) -> bool:
         """
         Scene change detection, which prevents interpolation in areas with
         significant scene changes.
         """
-        return self._rife_sc_detection
+        return self._sc
 
-    def _set_rife_sc_detection(self, value: bool | int | str = True):
-        validate_type(
-            value=value,
-            expected_types=(bool, int, str),
-            label="rife_sc_detection"
-        )
-        self._rife_sc_detection = bool(value)
+    @sc.setter
+    def sc(self, value: bool | str):
+        self._sc = to_bool(value, "rife.sc")
 
     @property
-    def target_fps(self) -> float:
-        """Frame rate target."""
-        return self._target_fps
+    def tta(self) -> bool:
+        """Documentation missing."""
+        return self._tta
 
-    def _set_target_fps(self, value: int | float | str):
-        validate_type(
-            value=value,
-            expected_types=(int, float, str),
-            label="target_fps"
-        )
-        value = float(value)
+    @tta.setter
+    def tta(self, value: bool | str):
+        self._tta = to_bool(value, "rife.tta")
 
-        # Clamp target_fps
-        if value < self._parent.container_fps:
-            self._target_fps = self._parent.container_fps
-            print(
-                f"\nWarning: target_fps was lesser than the videos's fps "
-                f"({self._parent.container_fps}). Clamping target_fps to "
-                f"{self._parent.container_fps}."
+    @property
+    def uhd(self) -> bool:
+        """Documentation missing."""
+        return self._uhd
+
+    @uhd.setter
+    def uhd(self, value: bool | str):
+        self._uhd = to_bool(value, "rife.uhd")
+
+
+class FPS(DictMixin):
+    MAX_DEN = int(1e6)
+
+    """Frame rate num/den."""
+    def __init__(
+        self,
+        parent: MVToolsConfig | RIFEConfig,
+        fps: int | float | str = 0,
+        factor: int | str = 0
+    ):
+        self._parent = parent
+
+        fps = float(fps)
+        factor = int(factor)
+
+        if fps == 0 and factor == 0:
+            raise ValueError("'target.fps' and 'target.factor' are empty")
+        elif fps != 0 and factor != 0:
+            raise ValueError(
+                "Only one of 'target.fps' or 'target.factor' can be set"
             )
-        elif value > self._parent.display_fps:
-            print(
-                f"\nWarning: target_fps was greater than the display's fps "
-                f"({self._parent.display_fps}). Clamping target_fps to "
-                f"{self._parent.display_fps}."
-            )
-            self._target_fps = self._parent.display_fps
+        elif fps != 0:
+            self.fps = fps
         else:
-            self._target_fps = value
+            self.factor = factor
 
-    def to_dict(self) -> dict:
-        """Return a dictionary of all public properties."""
-        filter = ("_parent")
-        d = {}
-        for public_name in self.__slots__:
-            if public_name not in filter:
-                public_name = public_name.lstrip('_')
-                prop = getattr(self, public_name)
-                if isinstance(prop, vs.VideoNode):
-                    d[public_name] = str(prop)
-                else:
-                    d[public_name] = prop
-        return d
+    @property
+    def factor_den(self) -> int:
+        """Frame rate factor denominator."""
+        return self._factor_den
 
-    def __str__(self) -> str:
-        """Return a string version of the object in JSON format."""
-        return json.dumps(self.to_dict(), indent=4, sort_keys=True)
+    @property
+    def factor_num(self) -> int:
+        """Frame rate factor numerator."""
+        return self._factor_num
 
-    def _parse_user_data(self, user_data_string: str):
-        """
-        Parse mpv's 'user_data' for user options, validate them, and
-        dynamically call the corresponding '_set_*' methods.
-        """
-        if user_data_string:
-            pairs = user_data_string.split(",")
-            for p in pairs:
-                # Split each part by '=' to get the key-value pair
-                if "=" not in p:
-                    raise ValueError(f"Expected 'key=value' format, got '{p}'")
-                k, v = p.split("=", 1)
-                k = f"{k}"
+    @property
+    def factor(self) -> float:
+        """Frame rate factor."""
+        return self._factor
 
-                # Dynamically calls a '_set_*' method by name
-                method = getattr(self, f"_set_{k}", None)
-                if method is None:
-                    raise ValueError(
-                        f"'{k}' is not a valid option"
-                    )
-                else:
-                    method(v)
+    @factor.setter
+    def factor(self, value: int | str):
+        factor = int(value)
 
+        if factor < 1:
+            print("\nWarning: 'target.factor' is < '1'. Clamping it to '1'.")
+            factor = 1
+        self._factor_num = factor
+        self._factor_den = 1
+        self._factor = factor
 
-def validate_type(
-    value: Any,
-    expected_types: Any,
-    label: str | None = None
-) -> Any:
-    """
-    Validate that the input is the expected type.
+        video_fps = self._parent._config._mpv.container_fps
+        self._fps = float(video_fps * self._factor_num)
+        self._fps_num, self._fps_den = self.get_fractional_fps(self._fps)
 
-    Parameters:
-        value: The value to validate.
-        expected_types: The expected type or a tuple of types.
-        label: A label for the value.
+    @property
+    def fps_den(self) -> int:
+        """Frame rate denominator."""
+        return self._fps_den
 
-    Returns:
-        Any: The input value.
+    @property
+    def fps_num(self) -> int:
+        """Frame rate numerator."""
+        return self._fps_num
 
-    Raises:
-        TypeError: If the input is not the expected type.
-    """
-    # Normalize expected_types to a tuple
-    if isinstance(expected_types, type):
-        expected = (expected_types,)
-    else:
-        expected = tuple(expected_types)
+    @property
+    def fps(self) -> float:
+        """Frame rate."""
+        return self._fps
 
-    if not isinstance(value, expected):
-        expected_str = ", ".join(f"'{t.__name__}'" for t in expected)
-        msg = (
-            f"expected type {expected_str}, "
-            f"but got '{type(value).__name__}'"
+    @fps.setter
+    def fps(self, value: int | float | str):
+        fps = float(value)
+        video_fps = self._parent._config._mpv.container_fps
+
+        if fps < video_fps:
+            print(
+                f"\nWarning: 'target.fps' is < than the videos's fps "
+                f"'{video_fps}'. Clamping it to '{video_fps}'."
+            )
+            fps = float(video_fps)
+
+        self._fps = fps
+        self._fps_num, self._fps_den = self.get_fractional_fps(self._fps)
+
+        self._factor = float(self._fps / video_fps)
+        self._factor_num, self._factor_den = (
+            self.get_fractional_factor(self._factor)
         )
-        if label:
-            msg = f"'{label}': {msg}"
-        raise TypeError(msg)
 
-    return value
+    @staticmethod
+    def get_fractional_fps(value: float) -> tuple[int, int]:
+        f = Fraction(value).limit_denominator(FPS.MAX_DEN)
+        return f.as_integer_ratio()
+
+    @staticmethod
+    def get_fractional_factor(value: float) -> tuple[int, int]:
+        f = Fraction(value).limit_denominator(FPS.MAX_DEN)
+        return f.as_integer_ratio()
+
+
+def object_to_dict(obj: object) -> dict:
+    """
+    Convert an object's @property attributes to a dictionary.
+    """
+    d = {}
+    for name in dir(obj):
+        if name.startswith("_"):
+            continue
+        attr = getattr(type(obj), name, None)
+        if isinstance(attr, property):
+            value = getattr(obj, name)
+            if isinstance(value, vs.VideoNode):
+                d[name] = str(value)
+            # Recursively convert nested config objects
+            elif hasattr(value, "to_dict"):
+                d[name] = value.to_dict()
+            else:
+                d[name] = value
+    return d
 
 
 def validate_boundaries(
@@ -391,26 +428,7 @@ def validate_boundaries(
 ) -> float:
     """
     Validate that a numeric value falls within boundaries.
-
-    Parameters:
-        value: The value to validate.
-        label: Label for error messages.
-        min: Minimum boundary.
-        incl_min: Whether the min boundary is inclusive.
-        max: Maximum boundary.
-        incl_max: Whether the max boundary is inclusive.
-
-    Returns:
-        float: The input value cast into a float.
-
-    Raises:
-        ValueError: If the input is not a numeric type or within boundaries.
     """
-    validate_type(
-        value=value,
-        expected_types=(int, float, str),
-        label="rife_sc_detection"
-    )
     value = float(value)
 
     if min is not None:
@@ -432,28 +450,26 @@ def validate_boundaries(
     return value
 
 
-def validate_coord(value: list[int], label: str = "Coordinate") -> list[int]:
+def to_bool(value: bool | int | str, label: str | None = None) -> bool:
     """
-    Validate that the input is a coordinate.
-
-    Parameters:
-        value: The value to validate.
-        label: Label for error messages.
-
-    Returns:
-        [int, int]: The input value.
-
-    Raises:
-        TypeError: If the input is not a list of 2 integers.
+    Convert a value to a boolean.
     """
-    if (
-        not isinstance(value, list)
-        or len(value) != 2
-        or not all(isinstance(v, int) for v in value)
-    ):
-        raise TypeError(f"{label} must be a list of 2 integers.")
-
-    return value
+    # Convert string or int to bool
+    if isinstance(value, str):
+        lowercase_value = value.lower()
+        if lowercase_value in ("false", "no", "0"):
+            return False
+        elif lowercase_value in ("true", "yes", "1"):
+            return True
+        else:
+            if label is not None:
+                raise ValueError(
+                    f"'{label}': invalid boolean string '{value}'"
+                )
+            else:
+                raise ValueError(f"Invalid boolean string '{value}'")
+    else:
+        return bool(value)
 
 
 def make_even(number: float) -> int:
@@ -465,14 +481,11 @@ def downscale(clip: vs.VideoNode, mpvd: MPVData):
     """
     display dimensions * display_factor = target scaling of the video.
     """
-    validate_type(value=clip, expected_types=vs.VideoNode, label="clip")
-    validate_type(value=mpvd, expected_types=MPVData, label="mpvd")
-
     display_width, display_height = mpvd.display_res
 
     # Calculate scaling factors to fit width and height within display
-    scale_width = display_width * mpvd.user_data.display_factor / clip.width
-    scale_height = display_height * mpvd.user_data.display_factor / clip.height
+    scale_width = display_width * mpvd.config.display_factor / clip.width
+    scale_height = display_height * mpvd.config.display_factor / clip.height
 
     # Choose the smaller scale to fit inside the display fill it
     scale = min(scale_width, scale_height)
@@ -496,48 +509,35 @@ def downscale(clip: vs.VideoNode, mpvd: MPVData):
 
 def prepare_clip(mpvd: MPVData):
     """Downscale clip and set its frame rate."""
-    validate_type(value=mpvd, expected_types=MPVData, label="mpvd")
-
     clip = mpvd.video_in
 
     clip = downscale(clip=clip, mpvd=mpvd)
 
-    fps_num = int(mpvd.container_fps * FPS_PRECISION)
-    fps_den = int(FPS_PRECISION)
-    clip = core.std.AssumeFPS(
-        clip=clip,
-        fpsnum=fps_num,
-        fpsden=fps_den
-    )
+    # Convert 'container_fps' to integer fraction
+    fps_num, fps_den = FPS.get_fractional_fps(mpvd.container_fps)
+
+    clip = core.std.AssumeFPS(clip=clip, fpsnum=fps_num, fpsden=fps_den)
 
     return clip
 
 
 def mvtools(mpvd: MPVData) -> vs.VideoNode:
     """Apply MVTools frame interpolation to a video clip."""
-    validate_type(value=mpvd, expected_types=MPVData, label="mpvd")
+    mvtools = mpvd.config.mvtools
 
     clip = prepare_clip(mpvd)
 
     super_clip = core.mv.Super(clip=clip)
     # Common parameters for motion vector analysis
     blksize = 32
-    common_analyse_params = {
+    common_params = {
         'blksize': blksize,
         'overlap': int(blksize / 8),
         'truemotion': True
     }
     # Backward and forward motion vectors
-    bwd_vec = core.mv.Analyse(
-        super=super_clip,
-        isb=True,
-        **common_analyse_params
-    )
-    fwd_vec = core.mv.Analyse(
-        super=super_clip,
-        isb=False,
-        **common_analyse_params
-    )
+    bwd_vec = core.mv.Analyse(super=super_clip, isb=True, **common_params)
+    fwd_vec = core.mv.Analyse(super=super_clip, isb=False, **common_params)
 
     # Motion estimation and compensation.
     clip = core.mv.FlowFPS(
@@ -545,8 +545,8 @@ def mvtools(mpvd: MPVData) -> vs.VideoNode:
         super=super_clip,
         mvbw=bwd_vec,
         mvfw=fwd_vec,
-        num=int(mpvd.user_data.target_fps * FPS_PRECISION),
-        den=int(FPS_PRECISION),
+        num=mvtools.target.fps_num,
+        den=mvtools.target.fps_den,
         thscd1=200,
         thscd2=64
     )
@@ -556,24 +556,21 @@ def mvtools(mpvd: MPVData) -> vs.VideoNode:
 
 def rife(mpvd: MPVData) -> vs.VideoNode:
     """Apply RIFE frame interpolation to a video clip."""
-    validate_type(value=mpvd, expected_types=MPVData, label="mpvd")
+    rife = mpvd.config.rife
 
     clip = prepare_clip(mpvd)
 
-    if mpvd.user_data.rife_sc_detection:
+    if mpvd.config.rife.sc:
         super_clip = core.mv.Super(clip=clip)
-        # Common parameters for motion vector analysis
-        blksize = 32
-        common_analyse_params = {
-            'blksize': blksize,
-            'overlap': int(blksize / 8),
-            'truemotion': True
-        }
+
         # Backward motion vectors
+        blksize = 32
         bwd_vec = core.mv.Analyse(
             super=super_clip,
             isb=True,
-            **common_analyse_params
+            blksize=blksize,
+            overlap=int(blksize / 8),
+            truemotion=True
         )
 
         # Only interpolate where needed
@@ -595,20 +592,15 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
     # AI assisted Real-Time Intermediate Flow Estimation
     clip = core.rife.RIFE(
         clip=clip,
-        model=mpvd.user_data.rife_model,
-        factor_num=int(
-            mpvd.user_data.target_fps
-            * clip.fps.denominator
-            / clip.fps.numerator
-            * FPS_PRECISION
-        ),
-        factor_den=int(FPS_PRECISION),
-        gpu_id=mpvd.user_data.rife_gpu_id,
-        gpu_thread=2,
-        tta=False,
-        uhd=True,
-        sc=mpvd.user_data.rife_sc_detection,
-        list_gpu=False
+        model=rife.model,
+        factor_num=rife.target.factor_num,
+        factor_den=rife.target.factor_den,
+        gpu_id=rife.gpu_id,
+        gpu_thread=rife.gpu_thread,
+        tta=rife.tta,
+        uhd=rife.uhd,
+        sc=rife.sc,
+        list_gpu=rife.list_gpu
     )
 
     # Reset color space
@@ -622,6 +614,7 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
 
 # Initialize the MPVData instance
 mpvd = MPVData(
+    name="mpvd",
     container_fps=container_fps,  # noqa: F821
     display_fps=display_fps,  # noqa: F821
     display_res=display_res,  # noqa: F821
@@ -634,9 +627,9 @@ mpvd = MPVData(
 print(f"\ninterpolation.vpy:\n{mpvd}")
 
 # Start interpolation
-if mpvd.user_data.library == "mvtools":
+if mpvd.config.library == "mvtools":
     clip = mvtools(mpvd)
-elif mpvd.user_data.library == "rife":
+elif mpvd.config.library == "rife":
     clip = rife(mpvd)
 
 # Output the processed clip
