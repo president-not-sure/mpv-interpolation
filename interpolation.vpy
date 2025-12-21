@@ -479,20 +479,29 @@ def make_even(number: float) -> int:
 
 def downscale(clip: vs.VideoNode, mpvd: MPVData):
     """
-    display dimensions * display_factor = target scaling of the video.
+    display area * display_area_factor = target scaling of the video
+
+    Notes:
+        - Ensures a predictable processing load for any video aspect ratio, as
+          long as the video area, display area, and display_area_factor remain
+          constant.
+        - The video resolution will never be upscaled.
     """
     display_width, display_height = mpvd.display_res
 
-    # Calculate scaling factors to fit width and height within display
-    scale_width = display_width * mpvd.config.display_factor / clip.width
-    scale_height = display_height * mpvd.config.display_factor / clip.height
+    # Calculate the target display area, taking display_factor into account
+    target_area = display_width * display_height * mpvd.config.display_factor
 
-    # Choose the smaller scale to fit inside the display fill it
-    scale = min(scale_width, scale_height)
-    # Prevent upscaling
+    # Calculate the video area
+    video_area = clip.width * clip.height
+
+    # Calculate the scaling factor based on area ratio
+    scale = (target_area / video_area) ** 0.5
+
+    # Prevent upscaling beyond the original video dimensions
     scale = min(1, scale)
 
-    # Scale dimensions and ensure compatibility
+    # Calculate target dimensions and ensure even numbers
     target_width = make_even(clip.width * scale)
     target_height = make_even(clip.height * scale)
 

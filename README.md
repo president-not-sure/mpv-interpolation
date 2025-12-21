@@ -53,9 +53,12 @@ cp -afv interpolation.vpy "$mpv_config_dir"
 
 Options are passed to the VapourSynth script via mpv's key bindings. These key bindings use the user-data key, whose value is a string of key–value pairs. Each key–value pair is written as `key=value`, and multiple pairs are separated by `,`. Option order does not matter. Omitted key-values pairs will be set to default values. Specifying the path of the script is the minimal configuration.
 
-### display_factor
+### display_area_factor
 
-- description: display dimensions * display_factor = target scaling of the video.
+- description: display area * display_area_factor = target scaling of the video
+- notes:
+  - Ensures a predictable processing load for any video aspect ratio, as long as the video area, display area, and display_area_factor remain constant.
+  - The video resolution will never be upscaled.
 - constraint: Between 0.05 and 1.0 inclusively.
 - default: 1.0
 - type: float
@@ -150,7 +153,7 @@ Add the following in your `~/.config/mpv/input.conf` or `/.var/app/io.mpv.Mpv/co
 
 ```conf
 ctrl+i vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=mvtools"
-ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_factor=0.5,rife.target.factor=2,rife.sc=false"
+ctrl+I vf toggle vapoursynth=file=~~home/vapoursynth/interpolation.vpy:user-data="library=rife,display_area_factor=0.5,rife.target.factor=2,rife.sc=false"
 ```
 
 Or even:
