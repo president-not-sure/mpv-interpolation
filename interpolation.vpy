@@ -278,7 +278,7 @@ class RIFEConfig(DictMixin):
 
     @property
     def tta(self) -> bool:
-        """Documentation missing."""
+        """TTA (Test-Time Augmentation) during interpolation."""
         return self._tta
 
     @tta.setter
@@ -287,7 +287,7 @@ class RIFEConfig(DictMixin):
 
     @property
     def uhd(self) -> bool:
-        """Documentation missing."""
+        """Ultra High Definition mode for interpolation."""
         return self._uhd
 
     @uhd.setter

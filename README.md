@@ -104,7 +104,7 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 
 ### rife.tta
 
-- description: Whether to apply TTA (Test-Time Augmentation) during interpolation.
+- description: TTA (Test-Time Augmentation) during interpolation.
 - constraint: true or false
 - default: false
 - type: bool
