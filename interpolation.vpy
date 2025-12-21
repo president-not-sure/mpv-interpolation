@@ -25,10 +25,10 @@ core.std.LoadPlugin(path=f"{lib_dir}/libmvtools.so")
 
 class DictMixin:
     """Provides to_dict() and __str__() methods for configuration objects."""
-    
+
     def to_dict(self) -> dict:
         return object_to_dict(self)
-    
+
     def __str__(self) -> str:
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
 
