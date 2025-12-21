@@ -24,13 +24,88 @@ core.std.LoadPlugin(path=f"{lib_dir}/libmvtools.so")
 
 
 class DictMixin:
-    """Provides to_dict() and __str__() methods for configuration objects."""
-
+    """Dict methods for objects."""
     def to_dict(self) -> dict:
-        return object_to_dict(self)
+        """Dict or self"""
+        d = {}
+        for name in dir(self):
+            if name.startswith("_"):
+                continue
+            attr = getattr(type(self), name, None)
+            if isinstance(attr, property):
+                value = getattr(self, name)
+                if isinstance(value, vs.VideoNode):
+                    d[name] = str(value)
+                # Recursively convert nested config objects
+                elif hasattr(value, "to_dict"):
+                    d[name] = value.to_dict()
+                else:
+                    d[name] = value
+        return d
 
     def __str__(self) -> str:
+        """Pretty JSON of self"""
         return json.dumps(self.to_dict(), indent=4, sort_keys=True)
+
+
+class ConfigMixin:
+    """Helper methods for configurations objects."""
+    def to_bool(
+        self,
+        value: bool | int | str,
+        label: str | None = None
+    ) -> bool:
+        """
+        Convert a value to a boolean.
+        """
+        # Convert string or int to bool
+        if isinstance(value, str):
+            lowercase_value = value.lower()
+            if lowercase_value in ("false", "no", "0"):
+                return False
+            elif lowercase_value in ("true", "yes", "1"):
+                return True
+            else:
+                if label is not None:
+                    raise ValueError(
+                        f"'{label}': invalid boolean string '{value}'"
+                    )
+                else:
+                    raise ValueError(f"Invalid boolean string '{value}'")
+        else:
+            return bool(value)
+
+    def validate_boundaries(
+        self,
+        value: int | float | str,
+        label: str = "Value",
+        min: int | float | None = None,
+        incl_min: bool = True,
+        max: int | float | None = None,
+        incl_max: bool = True
+    ) -> float:
+        """
+        Validate that a numeric value falls within boundaries.
+        """
+        value = float(value)
+
+        if min is not None:
+            if incl_min:
+                if value < min:
+                    raise ValueError(f"{label} must be >= {min}")
+            else:
+                if value <= min:
+                    raise ValueError(f"{label} must be > {min}")
+
+        if max is not None:
+            if incl_max:
+                if value > max:
+                    raise ValueError(f"{label} must be <= {max}")
+            else:
+                if value >= max:
+                    raise ValueError(f"{label} must be < {max}")
+
+        return value
 
 
 class MPVData(DictMixin):
@@ -94,7 +169,7 @@ class MPVData(DictMixin):
         return self._config
 
 
-class Config(DictMixin):
+class Config(DictMixin, ConfigMixin):
     """Holds validated user configuration."""
     def __init__(self, parent: MPVData, user_data_str: str):
         self._mpv = parent
@@ -117,7 +192,7 @@ class Config(DictMixin):
 
     @display_factor.setter
     def display_factor(self, value: int | float | str):
-        self._display_factor = validate_boundaries(
+        self._display_factor = self.validate_boundaries(
             value,
             "display_factor",
             min=0.05,
@@ -192,7 +267,7 @@ class MVToolsConfig(DictMixin):
         return self._target
 
 
-class RIFEConfig(DictMixin):
+class RIFEConfig(DictMixin, ConfigMixin):
     """Holds validated RIFE config."""
     def __init__(self, parent: Config):
         self._config = parent
@@ -219,7 +294,7 @@ class RIFEConfig(DictMixin):
 
     @gpu_id.setter
     def gpu_id(self, value: int | str):
-        validate_boundaries(value, "rife.gpu_id", min=0)
+        self.validate_boundaries(value, "rife.gpu_id", min=0)
         self._gpu_id = int(value)
 
     @property
@@ -229,7 +304,7 @@ class RIFEConfig(DictMixin):
 
     @gpu_thread.setter
     def gpu_thread(self, value: int | str):
-        validate_boundaries(value, "rife.gpu_thread", min=1)
+        self.validate_boundaries(value, "rife.gpu_thread", min=1)
         self._gpu_thread = int(value)
 
     @property
@@ -239,7 +314,7 @@ class RIFEConfig(DictMixin):
 
     @list_gpu.setter
     def list_gpu(self, value: bool | str):
-        self._list_gpu = to_bool(value, "rife.list_gpu")
+        self._list_gpu = self.to_bool(value, "rife.list_gpu")
 
     @property
     def model(self) -> int:
@@ -261,7 +336,12 @@ class RIFEConfig(DictMixin):
         else:
             raise FileNotFoundError(f"No models found in {models_dir}")
 
-        validate_boundaries(value, "rife.model", min=0, max=last_model_index)
+        self.validate_boundaries(
+            value,
+            "rife.model",
+            min=0,
+            max=last_model_index
+        )
         self._model = int(value)
 
     @property
@@ -274,7 +354,7 @@ class RIFEConfig(DictMixin):
 
     @sc.setter
     def sc(self, value: bool | str):
-        self._sc = to_bool(value, "rife.sc")
+        self._sc = self.to_bool(value, "rife.sc")
 
     @property
     def tta(self) -> bool:
@@ -283,7 +363,7 @@ class RIFEConfig(DictMixin):
 
     @tta.setter
     def tta(self, value: bool | str):
-        self._tta = to_bool(value, "rife.tta")
+        self._tta = self.to_bool(value, "rife.tta")
 
     @property
     def uhd(self) -> bool:
@@ -292,10 +372,49 @@ class RIFEConfig(DictMixin):
 
     @uhd.setter
     def uhd(self, value: bool | str):
-        self._uhd = to_bool(value, "rife.uhd")
+        self._uhd = self.to_bool(value, "rife.uhd")
 
 
 class FPS(DictMixin):
+    """FPS or FPS factor target container"""
+    def __init__(
+        self,
+        parent: Target,
+        value: int | float = 0,
+    ):
+        self._target = parent
+        self._value = value
+
+    @property
+    def den(self) -> int | float:
+        """Denominator"""
+        return self._den
+
+    @den.setter
+    def den(self, value: int | float):
+        self._den = value
+
+    @property
+    def num(self) -> int | float:
+        """Numerator"""
+        return self._num
+
+    @num.setter
+    def num(self, value: int | float):
+        self._num = value
+
+    @property
+    def value(self) -> int | float:
+        """Value"""
+        return self._value
+
+    @value.setter
+    def value(self, value: int | float):
+        self._value = value
+
+
+class Target(DictMixin):
+    """Target FPS and target factor."""
     MAX_DEN = int(1e6)
 
     """Frame rate num/den."""
@@ -392,84 +511,9 @@ class FPS(DictMixin):
         return f.as_integer_ratio()
 
     @staticmethod
-    def get_fractional_factor(value: float) -> tuple[int, int]:
-        f = Fraction(value).limit_denominator(FPS.MAX_DEN)
-        return f.as_integer_ratio()
-
-
-def object_to_dict(obj: object) -> dict:
-    """
-    Convert an object's @property attributes to a dictionary.
-    """
-    d = {}
-    for name in dir(obj):
-        if name.startswith("_"):
-            continue
-        attr = getattr(type(obj), name, None)
-        if isinstance(attr, property):
-            value = getattr(obj, name)
-            if isinstance(value, vs.VideoNode):
-                d[name] = str(value)
-            # Recursively convert nested config objects
-            elif hasattr(value, "to_dict"):
-                d[name] = value.to_dict()
-            else:
-                d[name] = value
-    return d
-
-
-def validate_boundaries(
-    value: int | float | str,
-    label: str = "Value",
-    min: int | float | None = None,
-    incl_min: bool = True,
-    max: int | float | None = None,
-    incl_max: bool = True
-) -> float:
-    """
-    Validate that a numeric value falls within boundaries.
-    """
-    value = float(value)
-
-    if min is not None:
-        if incl_min:
-            if value < min:
-                raise ValueError(f"{label} must be >= {min}")
-        else:
-            if value <= min:
-                raise ValueError(f"{label} must be > {min}")
-
-    if max is not None:
-        if incl_max:
-            if value > max:
-                raise ValueError(f"{label} must be <= {max}")
-        else:
-            if value >= max:
-                raise ValueError(f"{label} must be < {max}")
-
-    return value
-
-
-def to_bool(value: bool | int | str, label: str | None = None) -> bool:
-    """
-    Convert a value to a boolean.
-    """
-    # Convert string or int to bool
-    if isinstance(value, str):
-        lowercase_value = value.lower()
-        if lowercase_value in ("false", "no", "0"):
-            return False
-        elif lowercase_value in ("true", "yes", "1"):
-            return True
-        else:
-            if label is not None:
-                raise ValueError(
-                    f"'{label}': invalid boolean string '{value}'"
-                )
-            else:
-                raise ValueError(f"Invalid boolean string '{value}'")
-    else:
-        return bool(value)
+    def fraction(value: float) -> tuple[int, int]:
+        f = Fraction(value).limit_denominator(Target.MAX_DEN)
+        return f.numerator, f.denominator
 
 
 def make_even(number: float) -> int:
