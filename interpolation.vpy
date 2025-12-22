@@ -175,7 +175,7 @@ class Config(DictMixin, ConfigMixin):
         self._mpv = parent
 
         # Default config values
-        self.display_factor = 1.0
+        self.display_area_factor = 1.0
         self.library = "mvtools"
 
         self._mvtools = MVToolsConfig(self)
@@ -184,17 +184,17 @@ class Config(DictMixin, ConfigMixin):
         self._parse_user_data(user_data_str)
 
     @property
-    def display_factor(self) -> float:
+    def display_area_factor(self) -> float:
         """
-        display dimensions * display_factor = target scaling of the video.
+        display area * display_area_factor = target scaling of the video
         """
         return self._display_factor
 
-    @display_factor.setter
-    def display_factor(self, value: int | float | str):
+    @display_area_factor.setter
+    def display_area_factor(self, value: int | float | str):
         self._display_factor = self.validate_boundaries(
             value,
-            "display_factor",
+            "display_area_factor",
             min=0.05,
             max=1.0
         )
@@ -533,8 +533,12 @@ def downscale(clip: vs.VideoNode, mpvd: MPVData):
     """
     display_width, display_height = mpvd.display_res
 
-    # Calculate the target display area, taking display_factor into account
-    target_area = display_width * display_height * mpvd.config.display_factor
+    # Calculate the target display area taking display_area_factor into account
+    target_area = (
+        display_width
+        * display_height
+        * mpvd.config.display_area_factor
+    )
 
     # Calculate the video area
     video_area = clip.width * clip.height
