@@ -59,91 +59,95 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 - notes:
   - Ensures a predictable processing load for any video aspect ratio, as long as the video area, display area, and display_area_factor remain constant.
   - The video resolution will never be upscaled.
-- constraint: Between 0.05 and 1.0 inclusively.
+- constraints: Between 0.05 and 1.0 inclusively.
 - default: 1.0
 - type: float
 
 ### library
 
 - description: Interpolation library.
-- constraint: mvtools, rife
+- constraints: mvtools, rife
 - default: mvtools
 - type: str
 
 ### rife.gpu_id
 
 - description: ID of the GPU used by RIFE.
-- constraint: Greater or equal to 0.
+- constraints: Greater or equal to 0.
 - default: 0
 - type: int
 
 ### rife.gpu_thread
 
 - description: Number of GPU threads used by RIFE.
-- constraint: Greater or equal to 1.
+- constraints: Greater or equal to 1.
 - default: 2
 - type: int
 
 ### rife.list_gpu
 
 - description: List available GPU IDs without performing interpolation.
-- constraint: true or false
+- constraints: true or false
 - default: false
 - type: bool
 
 ### rife.model
 
 - description: RIFE's model index in the models directory.
-- constraint: Between 0 and the total number of available models minus 1.
+- constraints: Between 0 and the total number of available models minus 1.
 - default: 41
 - type: int
 
 ### rife.sc
 
 - description: Scene change detection, which prevents interpolation in areas with significant scene changes.
-- constraint: true or false
+- constraints: true or false
 - default: true
 - type: bool
 
 ### rife.tta
 
 - description: TTA (Test-Time Augmentation) during interpolation.
-- constraint: true or false
+- constraints: true or false
 - default: false
 - type: bool
 
 ### rife.uhd
 
 - description: Ultra High Definition mode for interpolation.
-- constraint: true or false
+- constraints: true or false
 - default: true
 - type: bool
 
-### rife.target.fps
+### rife.target.fps.value
 
 - description: Target frame rate for RIFE interpolation. Mutually exclusive with factor.
-- constraint: Clamped to the video's FPS.
+- constraints: Between the video FPS and the display FPS.
+- note: Clamped to constraints.
 - default: Display FPS.
 - type: float
 
-### rife.target.factor
+### rife.target.int_factor.value
 
-- description: Factor by which to multiply the original frame rate for RIFE interpolation. Mutually exclusive with fps.
-- constraint: Greater or equal to 1.
+- description: Integer factor by which to multiply the original frame rate for RIFE interpolation. Mutually exclusive with fps.
+- constraints: Between 1 and the highest integer factor that the display will allow.
+- note: Clamped to constraints.
 - default: 2
 - type: int
 
-### mvtools.target.fps
+### mvtools.target.fps.value
 
 - description: Target frame rate for MVTools interpolation. Mutually exclusive with factor.
-- constraint: Clamped to the video's FPS.
+- constraints: Between the video FPS and the display FPS.
+- note: Clamped to constraints.
 - default: Display FPS.
 - type: float
 
-### mvtools.target.factor
+### mvtools.target.int_factor.value
 
-- description: Factor by which to multiply the original frame rate for MVTools interpolation. Mutually exclusive with fps.
-- constraint: Greater or equal to 1.
+- description: Integer factor by which to multiply the original frame rate for MVTools interpolation. Mutually exclusive with fps.
+- constraints: Greater or equal to 1 or the highest integer factor that the display will allow.
+- note: Clamped to constraints.
 - default: 2
 - type: int
 

@@ -259,11 +259,11 @@ class MVToolsConfig(DictMixin):
         self._config = parent
 
         # Default values for the MVTools library
-        self._target = FPS(self, fps=self._config._mpv.display_fps)
+        self._target = Target(self, fps=self._config._mpv.display_fps)
 
     @property
-    def target(self) -> FPS:
-        """Target Frame rate object."""
+    def target(self) -> Target:
+        """Target object."""
         return self._target
 
 
@@ -280,11 +280,11 @@ class RIFEConfig(DictMixin, ConfigMixin):
         self.sc = True
         self.tta = False
         self.uhd = True
-        self._target = FPS(self, factor=2)
+        self._target = Target(self, factor=2)
 
     @property
-    def target(self) -> FPS:
-        """Target Frame rate object."""
+    def target(self) -> Target:
+        """Target object."""
         return self._target
 
     @property
@@ -375,32 +375,38 @@ class RIFEConfig(DictMixin, ConfigMixin):
         self._uhd = self.to_bool(value, "rife.uhd")
 
 
-class FPS(DictMixin):
-    """FPS or FPS factor target container"""
+class FrameRate(DictMixin):
+    """FPS or factor container used by Target()"""
     def __init__(
         self,
         parent: Target,
+        kind: str = "fps",
         value: int | float = 0,
+        num: int = 0,
+        den: int = 0
     ):
         self._target = parent
+        self._kind = kind
         self._value = value
+        self._num = num
+        self._den = den
 
     @property
-    def den(self) -> int | float:
+    def den(self) -> int:
         """Denominator"""
         return self._den
 
     @den.setter
-    def den(self, value: int | float):
+    def den(self, value: int):
         self._den = value
 
     @property
-    def num(self) -> int | float:
+    def num(self) -> int:
         """Numerator"""
         return self._num
 
     @num.setter
-    def num(self, value: int | float):
+    def num(self, value: int):
         self._num = value
 
     @property
@@ -409,15 +415,22 @@ class FPS(DictMixin):
         return self._value
 
     @value.setter
-    def value(self, value: int | float):
-        self._value = value
+    def value(self, value: int | float | str):
+        if self._kind == "fps":
+            self._target._set_fps(float(value))
+        elif self._kind == "factor":
+            self._target._set_factor(int(value))
+        else:
+            raise ValueError(
+                f"'target.FrameRate().value' expect 'fps' or 'factor', but "
+                f"got '{value}'"
+            )
 
 
 class Target(DictMixin):
     """Target FPS and target factor."""
     MAX_DEN = int(1e6)
 
-    """Frame rate num/den."""
     def __init__(
         self,
         parent: MVToolsConfig | RIFEConfig,
@@ -426,89 +439,97 @@ class Target(DictMixin):
     ):
         self._parent = parent
 
+        # Initialize values
         fps = float(fps)
         factor = int(factor)
 
         if fps == 0 and factor == 0:
-            raise ValueError("'target.fps' and 'target.factor' are empty")
+            raise ValueError(
+                "'target.fps.value' and 'target.factor.value' are empty"
+            )
         elif fps != 0 and factor != 0:
             raise ValueError(
-                "Only one of 'target.fps' or 'target.factor' can be set"
+                "'target.fps.value' or 'target.factor.value' are "
+                "mutually exclusive"
             )
         elif fps != 0:
-            self.fps = fps
+            self._set_fps(fps)
         else:
-            self.factor = factor
+            self._set_factor(factor)
 
     @property
-    def factor_den(self) -> int:
-        """Frame rate factor denominator."""
-        return self._factor_den
-
-    @property
-    def factor_num(self) -> int:
-        """Frame rate factor numerator."""
-        return self._factor_num
-
-    @property
-    def factor(self) -> float:
-        """Frame rate factor."""
-        return self._factor
-
-    @factor.setter
-    def factor(self, value: int | str):
-        factor = int(value)
-
-        if factor < 1:
-            print("\nWarning: 'target.factor' is < '1'. Clamping it to '1'.")
-            factor = 1
-        self._factor_num = factor
-        self._factor_den = 1
-        self._factor = factor
-
-        video_fps = self._parent._config._mpv.container_fps
-        self._fps = float(video_fps * self._factor_num)
-        self._fps_num, self._fps_den = self.get_fractional_fps(self._fps)
-
-    @property
-    def fps_den(self) -> int:
-        """Frame rate denominator."""
-        return self._fps_den
-
-    @property
-    def fps_num(self) -> int:
-        """Frame rate numerator."""
-        return self._fps_num
-
-    @property
-    def fps(self) -> float:
-        """Frame rate."""
+    def fps(self) -> FrameRate:
+        """FrameRate object."""
         return self._fps
 
     @fps.setter
-    def fps(self, value: int | float | str):
-        fps = float(value)
+    def fps(self, value: FrameRate):
+        self._fps = value
+
+    @property
+    def factor(self) -> FrameRate:
+        """FrameRate object."""
+        return self._factor
+
+    @factor.setter
+    def factor(self, value: FrameRate):
+        self._factor = value
+
+    # Methods that manipulate fps and factor
+    def _set_fps(self, fps: float):
+        """Set fps and update factor accordingly."""
         video_fps = self._parent._config._mpv.container_fps
+        display_fps = self._parent._config._mpv.display_fps
 
         if fps < video_fps:
+            fps = video_fps
             print(
-                f"\nWarning: 'target.fps' is < than the videos's fps "
-                f"'{video_fps}'. Clamping it to '{video_fps}'."
+                "\nWarning: fps < video fps. Clamping to video fps "
+                f"({video_fps})."
             )
-            fps = float(video_fps)
+        if fps > display_fps:
+            fps = display_fps
+            print(
+                "\nWarning: fps > display fps. Clamping to display fps "
+                f"({display_fps})."
+            )
 
-        self._fps = fps
-        self._fps_num, self._fps_den = self.get_fractional_fps(self._fps)
+        # Replace fps FrameRate object factor fps
+        num, den = self.fraction(fps)
+        self.fps = FrameRate(self, "fps", value=fps, num=num, den=den)
 
-        self._factor = float(self._fps / video_fps)
-        self._factor_num, self._factor_den = (
-            self.get_fractional_factor(self._factor)
-        )
+        # Replace factor FrameRate object factor
+        factor = fps / video_fps
+        num, den = self.fraction(factor)
+        self.factor = FrameRate(self, "factor", value=factor, den=den, num=num)
 
-    @staticmethod
-    def get_fractional_fps(value: float) -> tuple[int, int]:
-        f = Fraction(value).limit_denominator(FPS.MAX_DEN)
-        return f.as_integer_ratio()
+    def _set_factor(self, factor: int):
+        """Set factor and update fps accordingly."""
+        video_fps = int(self._parent._config._mpv.container_fps)
+        display_fps = self._parent._config._mpv.display_fps
+
+        if factor < 1:
+            factor = 1
+            print("\nWarning: factor < 1. Clamping to 1.")
+        if factor * video_fps > display_fps:
+            # Calculate the maximum possible int factor as a float
+            max_factor = display_fps / video_fps
+            factor = int(max_factor - (max_factor % 1))
+            print(
+                "\nWarning: factor * video fps > display fps. Clamping to "
+                f"the highest integer factor ({factor}) that the display "
+                "allows."
+            )
+
+        # Replace factor FrameRate object
+        num = factor
+        den = 1
+        self.factor = FrameRate(self, "factor", value=factor, num=num, den=den)
+
+        # Replace fps FrameRate object
+        fps = factor * video_fps
+        num, den = self.fraction(fps)
+        self.fps = FrameRate(self, "fps", value=fps, den=den, num=num)
 
     @staticmethod
     def fraction(value: float) -> tuple[int, int]:
@@ -571,7 +592,7 @@ def prepare_clip(mpvd: MPVData):
     clip = downscale(clip=clip, mpvd=mpvd)
 
     # Convert 'container_fps' to integer fraction
-    fps_num, fps_den = FPS.get_fractional_fps(mpvd.container_fps)
+    fps_num, fps_den = Target.fraction(mpvd.container_fps)
 
     clip = core.std.AssumeFPS(clip=clip, fpsnum=fps_num, fpsden=fps_den)
 
@@ -602,8 +623,8 @@ def mvtools(mpvd: MPVData) -> vs.VideoNode:
         super=super_clip,
         mvbw=bwd_vec,
         mvfw=fwd_vec,
-        num=mvtools.target.fps_num,
-        den=mvtools.target.fps_den,
+        num=mvtools.target.fps.num,
+        den=mvtools.target.fps.den,
         thscd1=200,
         thscd2=64
     )
@@ -650,8 +671,8 @@ def rife(mpvd: MPVData) -> vs.VideoNode:
     clip = core.rife.RIFE(
         clip=clip,
         model=rife.model,
-        factor_num=rife.target.factor_num,
-        factor_den=rife.target.factor_den,
+        factor_num=rife.target.factor.num,
+        factor_den=rife.target.factor.den,
         gpu_id=rife.gpu_id,
         gpu_thread=rife.gpu_thread,
         tta=rife.tta,
