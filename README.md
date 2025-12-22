@@ -59,7 +59,7 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 - notes:
   - Ensures a predictable processing load for any video aspect ratio, as long as the video area, display area, and display_area_factor remain constant.
   - The video resolution will never be upscaled.
-- constraints: Between 0.05 and 1.0 inclusively.
+- constraints: Between 0.001 and 1.0 inclusively.
 - default: 1.0
 - type: float
 

@@ -195,7 +195,7 @@ class Config(DictMixin, ConfigMixin):
         self._display_factor = self.validate_boundaries(
             value,
             "display_area_factor",
-            min=0.05,
+            min=0.001,
             max=1.0
         )
 
