@@ -175,7 +175,7 @@ class Config(DictMixin, ConfigMixin):
         self._mpv = parent
 
         # Default config values
-        self.display_area_factor = 1.0
+        self.scaling = 1.0
         self.library = "mvtools"
 
         self._mvtools = MVToolsConfig(self)
@@ -184,17 +184,17 @@ class Config(DictMixin, ConfigMixin):
         self._parse_user_data(user_data_str)
 
     @property
-    def display_area_factor(self) -> float:
+    def scaling(self) -> float:
         """
-        display area * display_area_factor = target scaling of the video
+        Value used to further scale the display-fitted video area.
         """
-        return self._display_factor
+        return self._scaling
 
-    @display_area_factor.setter
-    def display_area_factor(self, value: int | float | str):
-        self._display_factor = self.validate_boundaries(
+    @scaling.setter
+    def scaling(self, value: int | float | str):
+        self._scaling = self.validate_boundaries(
             value,
-            "display_area_factor",
+            "scaling",
             min=0.001,
             max=1.0
         )
@@ -537,6 +537,53 @@ class Target(DictMixin):
         return f.numerator, f.denominator
 
 
+class Dimension(DictMixin):
+    """Width and height."""
+    def __init__(self, width: int = 0, height: int = 0):
+        self.width = width
+        self.height = height
+
+    @property
+    def width(self) -> int:
+        """Width of the dimension."""
+        return self._width
+
+    @width.setter
+    def width(self, value: int):
+        self._width = self._validate_dimension(value, "width")
+
+    @property
+    def height(self) -> int:
+        """Height of the dimension."""
+        return self._height
+
+    @height.setter
+    def height(self, value: int):
+        self._height = self._validate_dimension(value, "height")
+
+    @property
+    def as_tuple(self) -> tuple[int, int]:
+        """Dimension as tuple. """
+        return self.width, self.height
+
+    @property
+    def as_kwargs(self) -> dict:
+        """Dimensions as keyword arguments. """
+        return {"width": self.width, "height": self.height}
+
+    @property
+    def area(self) -> int:
+        """Area of the dimension."""
+        return self.width * self.height
+
+    def _validate_dimension(self, value: int, name: str) -> int:
+        if not isinstance(value, int):
+            raise TypeError(f"'Dimension().{name}' must be an int")
+        if value < 0:
+            raise ValueError(f"'Dimension().{name}' must be non-negative")
+        return value
+
+
 def make_even(number: float) -> int:
     """Round a number down to the nearest even integer."""
     return int(number) - int(number) % 2
@@ -544,43 +591,41 @@ def make_even(number: float) -> int:
 
 def downscale(clip: vs.VideoNode, mpvd: MPVData):
     """
-    display area * display_area_factor = target scaling of the video
+    Downscale the video to fit the display dimensions and optionally
+    apply scaling based on the area of the fitted video.
 
-    Notes:
-        - Ensures a predictable processing load for any video aspect ratio, as
-          long as the video area, display area, and display_area_factor remain
-          constant.
-        - The video resolution will never be upscaled.
+    The function ensures:
+        - The video fits within the display dimensions
+        - The video dimensions is never upscaled
+        - A predictable processing load for any video aspect ratio
     """
-    display_width, display_height = mpvd.display_res
+    display_dim = Dimension(*mpvd.display_res)
+    in_dim = Dimension(width=clip.width, height=clip.height)
+    out_dim = Dimension(**in_dim.as_kwargs)
+    resize = False
 
-    # Calculate the target display area taking display_area_factor into account
-    target_area = (
-        display_width
-        * display_height
-        * mpvd.config.display_area_factor
-    )
-
-    # Calculate the video area
-    video_area = clip.width * clip.height
-
-    # Calculate the scaling factor based on area ratio
-    scale = (target_area / video_area) ** 0.5
-
-    # Prevent upscaling beyond the original video dimensions
-    scale = min(1, scale)
-
-    # Calculate target dimensions and ensure even numbers
-    target_width = make_even(clip.width * scale)
-    target_height = make_even(clip.height * scale)
-
-    # Only resize if scaling is necessary
-    if scale < 1:
-        return core.resize.Lanczos(
-            clip=clip,
-            width=target_width,
-            height=target_height
+    # Scale output dimensions to fit display
+    if in_dim.width > display_dim.width or in_dim.height > display_dim.height:
+        scale = min(
+            display_dim.width / in_dim.width,
+            display_dim.height / in_dim.height
         )
+        # Never upscale
+        scale = min(1, scale)
+        out_dim.width = make_even(in_dim.width * scale)
+        out_dim.height = make_even(in_dim.height * scale)
+        resize = True
+
+    # Scale output dimensions based on user provided scaling
+    if mpvd.config.scaling < 1:
+        scale = mpvd.config.scaling ** 0.5
+        out_dim.width = make_even(out_dim.width * scale)
+        out_dim.height = make_even(out_dim.height * scale)
+        resize = True
+
+    # Downscale
+    if resize:
+        return core.resize.Lanczos(clip=clip, **out_dim.as_kwargs)
     else:
         return clip
 
