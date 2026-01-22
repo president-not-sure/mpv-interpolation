@@ -15,7 +15,8 @@ A **VapourSynth** script for frame interpolation, allowing smooth motion and fra
 
 - Linux
 - Podman
-- mpv (Flatpak or baremetal)
+- mpv
+- python3-vapoursynth (non-Flatpak users)
 - An internet connection
 - GPU drivers and multimedia codecs should preferably be installed
 
