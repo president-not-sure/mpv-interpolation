@@ -56,10 +56,13 @@ Options are passed to the VapourSynth script via mpv's key bindings. These key b
 
 ### scaling
 
-- description: Value used to further scale the display-fitted video area.
+- description: Value used to linearly scale (i.e., multiply each dimension) the display-fitted video.
 - notes:
   - Never upscales.
-  - Ensures video fits within the display.
+  - Attempts to fit the video within the display but prioritizes playability in edge cases.
+  - Ensures even dimensions for chroma subsampling.
+  - Preserves aspect ratio.
+  - Never downscales below 64 pixels.
   - Ensures predictable processing load for any aspect ratio.
 - constraints: Between 0.001 and 1.0 inclusively.
 - default: 1.0

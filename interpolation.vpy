@@ -186,7 +186,8 @@ class Config(DictMixin, ConfigMixin):
     @property
     def scaling(self) -> float:
         """
-        Value used to further scale the display-fitted video area.
+        Value used to linearly scale (i.e., multiply each dimension) the
+        display-fitted video.
         """
         return self._scaling
 
@@ -567,11 +568,6 @@ class Dimension(DictMixin):
         return self.width, self.height
 
     @property
-    def as_kwargs(self) -> dict:
-        """Dimensions as keyword arguments. """
-        return {"width": self.width, "height": self.height}
-
-    @property
     def area(self) -> int:
         """Area of the dimension."""
         return self.width * self.height
@@ -584,50 +580,74 @@ class Dimension(DictMixin):
         return value
 
 
-def make_even(number: float) -> int:
-    """Round a number down to the nearest even integer."""
-    return int(number) - int(number) % 2
-
-
 def downscale(clip: vs.VideoNode, mpvd: MPVData):
     """
-    Downscale the video to fit the display dimensions and optionally
-    apply scaling based on the area of the fitted video.
+    Downscale the video to fit the display and optionally apply user-provided
+    linear scaling (per dimension).
 
-    The function ensures:
-        - The video fits within the display dimensions
-        - The video dimensions is never upscaled
-        - A predictable processing load for any video aspect ratio
+    Notes:
+        - Never upscales.
+        - Attempts to fit the video within the display but prioritizes
+          playability in edge cases.
+        - Ensures even dimensions for chroma subsampling.
+        - Preserves aspect ratio.
+        - Never downscales below 64 pixels.
+        - Ensures predictable processing load for any aspect ratio.
     """
-    display_dim = Dimension(*mpvd.display_res)
-    in_dim = Dimension(width=clip.width, height=clip.height)
-    out_dim = Dimension(**in_dim.as_kwargs)
-    resize = False
+    display = Dimension(*mpvd.display_res)
+    original = Dimension(width=clip.width, height=clip.height)
+    target = Dimension(width=clip.width, height=clip.height)
 
-    # Scale output dimensions to fit display
-    if in_dim.width > display_dim.width or in_dim.height > display_dim.height:
-        scale = min(
-            display_dim.width / in_dim.width,
-            display_dim.height / in_dim.height
-        )
-        # Never upscale
-        scale = min(1, scale)
-        out_dim.width = make_even(in_dim.width * scale)
-        out_dim.height = make_even(in_dim.height * scale)
-        resize = True
+    def make_even(number: float) -> int:
+        return int(number) - int(number) % 2
 
-    # Scale output dimensions based on user provided scaling
-    if mpvd.config.scaling < 1:
-        scale = mpvd.config.scaling ** 0.5
-        out_dim.width = make_even(out_dim.width * scale)
-        out_dim.height = make_even(out_dim.height * scale)
-        resize = True
+    def apply_scale(dim: Dimension, scale: float) -> Dimension:
+        """Scale dimensions and ensure validity."""
+        # Clamp dimention to 64 pixels (make_even can substract 2)
+        min_dim = 66
+
+        # Scale
+        width = dim.width * scale
+        height = dim.height * scale
+
+        # Clamp to min_dim and preserve aspect ratio
+        if width < min_dim or height < min_dim:
+            width_ratio = min_dim / width
+            height_ratio = min_dim / height
+            scale = max(width_ratio, height_ratio)
+            width *= scale
+            height *= scale
+            # Never upscale
+            if width > dim.width or height > dim.height:
+                width = dim.width
+                height = dim.height
+
+        # Ensures even dimensions for chroma subsampling.
+        width = make_even(width)
+        height = make_even(height)
+
+        return Dimension(width=width, height=height)
+
+    # Apply linear scaling to fit display
+    if original.width > display.width or original.height > display.height:
+        width_ratio = display.width / original.width
+        height_ratio = display.height / original.height
+        scale = min(width_ratio, height_ratio)
+        target = apply_scale(target, scale)
+
+    # Apply user-defined linear scaling
+    if 0 < mpvd.config.scaling < 1:
+        target = apply_scale(target, mpvd.config.scaling)
 
     # Downscale
-    if resize:
-        return core.resize.Lanczos(clip=clip, **out_dim.as_kwargs)
-    else:
-        return clip
+    if target.width != original.width or target.height != original.height:
+        return core.resize.Lanczos(
+            clip=clip,
+            width=target.width,
+            height=target.height
+        )
+
+    return clip
 
 
 def prepare_clip(mpvd: MPVData):
